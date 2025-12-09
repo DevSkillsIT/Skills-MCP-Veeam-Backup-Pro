@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  veeam-mcp-server:
+    build: .
+    container_name: veeam-mcp-hybrid
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - VEEAM_HOST=${VEEAM_HOST:-localhost}
+      - VEEAM_PORT=${VEEAM_PORT:-9419}
+      - VEEAM_API_VERSION=${VEEAM_API_VERSION:-1.2-rev0}
+      - VEEAM_IGNORE_SSL=${VEEAM_IGNORE_SSL:-true}
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./tools:/app/tools:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - veeam-network
+
+networks:
+  veeam-network:
+    driver: bridge 

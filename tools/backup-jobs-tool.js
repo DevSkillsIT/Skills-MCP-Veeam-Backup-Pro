@@ -1,0 +1,155 @@
+// tools/backup-jobs-tool.js
+import fetch from "node-fetch";
+import https from "https";
+import { z } from "zod";
+
+// Create an HTTPS agent that ignores self-signed certificates
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
+});
+
+export default function(server) {
+  // Add backup jobs tool (not sessions!)
+  server.tool(
+    "get-backup-jobs",
+    {
+      limit: z.number().min(1).max(1000).default(100).describe("Maximum number of jobs to retrieve"),
+      skip: z.number().min(0).default(0).describe("Number of jobs to skip (for pagination)"),
+      typeFilter: z.string().default("Backup").describe("Job type filter (e.g., Backup, Replica, BackupCopy)"),
+      stateFilter: z.string().optional().describe("Job state filter (e.g., Running, Stopped, Disabled)"),
+      nameFilter: z.string().optional().describe("Job name pattern filter (use * for wildcards)")
+    },
+    async (params) => {
+      try {
+        if (!global.vbrAuth) {
+          return {
+            content: [{ 
+              type: "text", 
+              text: "Not authenticated. Please call auth-vbr tool first." 
+            }],
+            isError: true
+          };
+        }
+        
+        const { host, port = 9419, token, apiVersion = "1.2-rev0" } = global.vbrAuth;
+        const { 
+          limit = 100, 
+          skip = 0, 
+          typeFilter = "Backup",
+          stateFilter,
+          nameFilter
+        } = params;
+        
+        // Build query parameters for JOBS API (not sessions!)
+        const queryParams = new URLSearchParams({
+          limit: limit.toString(),
+          skip: skip.toString(),
+          typeFilter: typeFilter
+        });
+        
+        if (stateFilter) {
+          queryParams.append('stateFilter', stateFilter);
+        }
+        
+        if (nameFilter) {
+          queryParams.append('nameFilter', nameFilter);
+        }
+        
+        const apiUrl = `https://${host}:${port}/api/v1/jobs?${queryParams.toString()}`;
+        console.log(`Fetching backup jobs from: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'x-api-version': apiVersion,
+            'Authorization': `Bearer ${token}`
+          },
+          agent: httpsAgent
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch backup jobs: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+        
+        const jobsData = await response.json();
+        console.log(`Received jobs data:`, JSON.stringify(jobsData, null, 2));
+        
+        // Check if we have any jobs
+        if (!jobsData.data || jobsData.data.length === 0) {
+          return {
+            content: [{ 
+              type: "text", 
+              text: `No backup jobs found with type filter: ${typeFilter}. This could mean:\n` +
+                    `1. No backup jobs are configured on this VBR server\n` +
+                    `2. The type filter '${typeFilter}' is too restrictive\n` +
+                    `3. You don't have permission to view these jobs\n` +
+                    `4. The VBR server is new and has no jobs yet\n\n` +
+                    `Try:\n` +
+                    `- Removing the typeFilter parameter to see all job types\n` +
+                    `- Checking the VBR console for configured jobs\n` +
+                    `- Verifying your user permissions on the VBR server\n\n` +
+                    `Available job types: Backup, Replica, BackupCopy, EntraIDTenantBackup, etc.`
+            }],
+            isError: false
+          };
+        }
+        
+        // Add a summary message at the beginning
+        const total = jobsData.pagination?.total || jobsData.data.length;
+        const count = jobsData.pagination?.count || jobsData.data.length;
+        const summary = `Retrieved ${count} backup jobs out of ${total} total jobs`;
+        
+        // Format the data for better readability
+        const formattedResult = {
+          summary,
+          jobs: jobsData.data.map(job => ({
+            id: job.id,
+            name: job.name,
+            type: job.type,
+            state: job.state,
+            platformName: job.platformName,
+            description: job.description,
+            scheduleEnabled: job.scheduleEnabled,
+            scheduleType: job.scheduleType,
+            lastRun: job.lastRun,
+            nextRun: job.nextRun,
+            retryCount: job.retryCount,
+            retryWait: job.retryWait,
+            result: job.result?.result || 'Unknown',
+            message: job.result?.message || 'No message'
+          })),
+          pagination: jobsData.pagination || { total, count },
+          filters: {
+            typeFilter,
+            stateFilter,
+            nameFilter
+          }
+        };
+        
+        return {
+          content: [{ 
+            type: "text", 
+            text: JSON.stringify(formattedResult, null, 2)
+          }]
+        };
+      } catch (error) {
+        console.error('Error in get-backup-jobs:', error);
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error fetching backup jobs: ${error.message}\n\n` +
+                  `Debugging tips:\n` +
+                  `1. Check if you're authenticated: call auth-vbr first\n` +
+                  `2. Verify the VBR server is accessible\n` +
+                  `3. Check your user permissions\n` +
+                  `4. Try different typeFilter values (Backup, Replica, BackupCopy, etc.)\n` +
+                  `5. This tool fetches JOBS (not sessions) - use get-backup-sessions for execution history`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+} 

@@ -1,0 +1,36 @@
+{
+  "server": {
+    "name": "Veeam VBR MCP Server",
+    "version": "1.0.0",
+    "description": "Hybrid MCP/HTTP server for Veeam Backup & Replication"
+  },
+  "modes": {
+    "mcp": {
+      "enabled": true,
+      "description": "Traditional MCP server mode for Claude Desktop and other MCP clients"
+    },
+    "http": {
+      "enabled": true,
+      "port": 8000,
+      "description": "HTTP/OpenAPI mode for Copilot Studio and web-based clients",
+      "cors": {
+        "enabled": true,
+        "origins": ["*"]
+      },
+      "authentication": {
+        "enabled": false,
+        "apiKey": null
+      }
+    }
+  },
+  "veeam": {
+    "host": "localhost",
+    "port": 9419,
+    "apiVersion": "1.2-rev0",
+    "ignoreSSL": true
+  },
+  "tools": {
+    "autoLoad": true,
+    "directory": "./tools"
+  }
+} 
