@@ -1,6 +1,10 @@
 # Deployment Guide - Veeam VBR MCP Hybrid Server
 
-This guide covers deploying the hybrid Veeam MCP server in various environments and configurations.
+**Guia completo de deployment para ambientes de desenvolvimento, staging e produção**
+
+---
+
+Este guia cobre o deployment do servidor MCP híbrido Veeam em diversos ambientes e configurações.
 
 ## 🏗️ Architecture Overview
 
@@ -487,4 +491,14 @@ services:
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Veeam REST API Documentation](https://helpcenter.veeam.com/docs/backup/vsphere/rest/overview.html)
 - [OpenAPI Specification](https://swagger.io/specification/)
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/) 
+- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by [Skills IT - Soluções em TI](https://skillsit.com.br) - BRAZIL 🇧🇷**
+
+*Deploying AI-Infrastructure Integration at Scale*
+
+</div> 

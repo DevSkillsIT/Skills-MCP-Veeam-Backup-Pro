@@ -1,4 +1,15 @@
-// tools/auth-tool.js
+// tools/auth-helper.js
+// ⚠️ IMPORTANTE: Este arquivo NÃO é mais exposto como tool pública.
+// A autenticação é gerenciada automaticamente pelo auth-middleware.js
+// Este arquivo é mantido apenas como referência histórica.
+//
+// COMO FUNCIONA AGORA:
+// - Todas as tools agora usam import { ensureAuthenticated } from "../lib/auth-middleware.js"
+// - A autenticação é AUTOMÁTICA e TRANSPARENTE
+// - Credenciais são lidas APENAS do arquivo .env
+// - Token é armazenado em global.vbrAuth com timestamp de expiração
+// - Promise memoization previne race conditions em chamadas simultâneas
+
 import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";

@@ -2,6 +2,7 @@
 import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
+import { ensureAuthenticated } from "../lib/auth-middleware.js";
 
 // Create an HTTPS agent that ignores self-signed certificates
 const httpsAgent = new https.Agent({
@@ -19,17 +20,8 @@ export default function(server) {
     },
     async (params) => {
       try {
-        if (!global.vbrAuth) {
-          return {
-            content: [{ 
-              type: "text", 
-              text: "Not authenticated. Please call auth-vbr tool first." 
-            }],
-            isError: true
-          };
-        }
-        
-        const { host, token } = global.vbrAuth;
+        // Autenticação automática via middleware
+        const { host, token } = await ensureAuthenticated();
         const { limit = 200, skip = 0, threshold = 20 } = params;
         
         const response = await fetch(`https://${host}:9419/api/v1/backupInfrastructure/repositories/states?limit=${limit}&skip=${skip}`, {
@@ -135,11 +127,29 @@ export default function(server) {
             text: JSON.stringify(formattedResult, null, 2)
           }]
         };
-      } catch (error) {
+      } catch (authError) {
+        // Erro de autenticação
+        if (authError.message.includes('Autenticação Veeam falhou')) {
+          console.error('[get-repositories] Falha na autenticação automática:', authError);
+          return {
+            content: [{
+              type: "text",
+              text: `Falha na autenticação automática: ${authError.message}\n\n` +
+                    `Verifique:\n` +
+                    `1. Credenciais no arquivo .env (VEEAM_HOST, VEEAM_USERNAME, VEEAM_PASSWORD)\n` +
+                    `2. Conectividade com o servidor VBR\n` +
+                    `3. Porta 9419 acessível\n` +
+                    `4. Credenciais válidas no VBR`
+            }],
+            isError: true
+          };
+        }
+
+        // Erro genérico
         return {
-          content: [{ 
-            type: "text", 
-            text: `Error fetching repositories: ${error.message}` 
+          content: [{
+            type: "text",
+            text: `Error fetching repositories: ${authError.message}`
           }],
           isError: true
         };

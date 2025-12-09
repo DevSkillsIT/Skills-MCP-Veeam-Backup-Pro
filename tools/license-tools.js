@@ -1,6 +1,7 @@
 // tools/license-tools.js
 import fetch from "node-fetch";
 import https from "https";
+import { ensureAuthenticated } from "../lib/auth-middleware.js";
 
 // Create an HTTPS agent that ignores self-signed certificates
 const httpsAgent = new https.Agent({
@@ -14,17 +15,8 @@ export default function(server) {
     { },
     async () => {
       try {
-        if (!global.vbrAuth) {
-          return {
-            content: [{ 
-              type: "text", 
-              text: "Not authenticated. Please call auth-vbr tool first." 
-            }],
-            isError: true
-          };
-        }
-        
-        const { host, token } = global.vbrAuth;
+        // Autenticação automática via middleware
+        const { host, token } = await ensureAuthenticated();
         
         const response = await fetch(`https://${host}:9419/api/v1/license`, {
           method: 'GET',
@@ -63,11 +55,29 @@ export default function(server) {
             text: JSON.stringify(formattedLicense, null, 2)
           }]
         };
-      } catch (error) {
+      } catch (authError) {
+        // Erro de autenticação
+        if (authError.message.includes('Autenticação Veeam falhou')) {
+          console.error('[get-license-info] Falha na autenticação automática:', authError);
+          return {
+            content: [{
+              type: "text",
+              text: `Falha na autenticação automática: ${authError.message}\n\n` +
+                    `Verifique:\n` +
+                    `1. Credenciais no arquivo .env (VEEAM_HOST, VEEAM_USERNAME, VEEAM_PASSWORD)\n` +
+                    `2. Conectividade com o servidor VBR\n` +
+                    `3. Porta 9419 acessível\n` +
+                    `4. Credenciais válidas no VBR`
+            }],
+            isError: true
+          };
+        }
+
+        // Erro genérico
         return {
-          content: [{ 
-            type: "text", 
-            text: `Error fetching license info: ${error.message}` 
+          content: [{
+            type: "text",
+            text: `Error fetching license info: ${authError.message}`
           }],
           isError: true
         };
@@ -81,17 +91,8 @@ export default function(server) {
     { },
     async () => {
       try {
-        if (!global.vbrAuth) {
-          return {
-            content: [{ 
-              type: "text", 
-              text: "Not authenticated. Please call auth-vbr tool first." 
-            }],
-            isError: true
-          };
-        }
-        
-        const { host, token } = global.vbrAuth;
+        // Autenticação automática via middleware
+        const { host, token } = await ensureAuthenticated();
         
         const response = await fetch(`https://${host}:9419/api/v1/license`, {
           method: 'GET',
@@ -127,11 +128,29 @@ export default function(server) {
             text: JSON.stringify(workloadsByType, null, 2)
           }]
         };
-      } catch (error) {
+      } catch (authError) {
+        // Erro de autenticação
+        if (authError.message.includes('Autenticação Veeam falhou')) {
+          console.error('[get-license-workloads] Falha na autenticação automática:', authError);
+          return {
+            content: [{
+              type: "text",
+              text: `Falha na autenticação automática: ${authError.message}\n\n` +
+                    `Verifique:\n` +
+                    `1. Credenciais no arquivo .env (VEEAM_HOST, VEEAM_USERNAME, VEEAM_PASSWORD)\n` +
+                    `2. Conectividade com o servidor VBR\n` +
+                    `3. Porta 9419 acessível\n` +
+                    `4. Credenciais válidas no VBR`
+            }],
+            isError: true
+          };
+        }
+
+        // Erro genérico
         return {
-          content: [{ 
-            type: "text", 
-            text: `Error fetching license workloads: ${error.message}` 
+          content: [{
+            type: "text",
+            text: `Error fetching license workloads: ${authError.message}`
           }],
           isError: true
         };

@@ -2,6 +2,7 @@
 import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
+import { ensureAuthenticated } from "../lib/auth-middleware.js";
 
 // Create an HTTPS agent that ignores self-signed certificates
 const httpsAgent = new https.Agent({
@@ -22,17 +23,8 @@ export default function(server) {
     },
     async (params) => {
       try {
-        if (!global.vbrAuth) {
-          return {
-            content: [{ 
-              type: "text", 
-              text: "Not authenticated. Please call auth-vbr tool first." 
-            }],
-            isError: true
-          };
-        }
-        
-        const { host, port = 9419, token, apiVersion = "1.2-rev0" } = global.vbrAuth;
+        // Autenticação automática via middleware
+        const { host, port, token, apiVersion } = await ensureAuthenticated();
         const { 
           limit = 100, 
           skip = 0, 
@@ -155,18 +147,35 @@ export default function(server) {
             text: JSON.stringify(formattedResult, null, 2)
           }]
         };
-      } catch (error) {
-        console.error('Error in get-backup-sessions:', error);
+      } catch (authError) {
+        // Erro de autenticação
+        if (authError.message.includes('Autenticação Veeam falhou')) {
+          console.error('[get-backup-sessions] Falha na autenticação automática:', authError);
+          return {
+            content: [{
+              type: "text",
+              text: `Falha na autenticação automática: ${authError.message}\n\n` +
+                    `Verifique:\n` +
+                    `1. Credenciais no arquivo .env (VEEAM_HOST, VEEAM_USERNAME, VEEAM_PASSWORD)\n` +
+                    `2. Conectividade com o servidor VBR\n` +
+                    `3. Porta 9419 acessível\n` +
+                    `4. Credenciais válidas no VBR`
+            }],
+            isError: true
+          };
+        }
+
+        // Erro genérico
+        console.error('Error in get-backup-sessions:', authError);
         return {
-          content: [{ 
-            type: "text", 
-            text: `Error fetching sessions: ${error.message}\n\n` +
+          content: [{
+            type: "text",
+            text: `Error fetching sessions: ${authError.message}\n\n` +
                   `Debugging tips:\n` +
-                  `1. Check if you're authenticated: call auth-vbr first\n` +
-                  `2. Verify the VBR server is accessible\n` +
-                  `3. Check your user permissions\n` +
-                  `4. Try removing filters to see all session types\n` +
-                  `5. Use get-backup-jobs to see configured backup jobs first`
+                  `1. Verify the VBR server is accessible\n` +
+                  `2. Check your user permissions\n` +
+                  `3. Try removing filters to see all session types\n` +
+                  `4. Use get-backup-jobs to see configured backup jobs first`
           }],
           isError: true
         };

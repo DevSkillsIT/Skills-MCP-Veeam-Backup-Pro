@@ -8,16 +8,21 @@ import swaggerJsdoc from "swagger-jsdoc";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import { authManager } from "./lib/auth-middleware.js";
 
 // Get the directory path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isHttpMode = args.includes('--http');
 const isMcpMode = args.includes('--mcp');
-const httpPort = parseInt(args.find(arg => arg.startsWith('--port='))?.split('=')[1]) || 8000;
+const httpPort = parseInt(args.find(arg => arg.startsWith('--port='))?.split('=')[1]) || parseInt(process.env.HTTP_PORT) || 8825;
 
 // Default to both modes if no specific mode is specified
 const runHttpMode = isHttpMode || (!isMcpMode && !isHttpMode);
@@ -25,7 +30,7 @@ const runMcpMode = isMcpMode || (!isMcpMode && !isHttpMode);
 
 // Create an MCP server
 const server = new McpServer({
-  name: "VBR API Server",
+  name: "veeam-backup",
   version: "1.0.0"
 });
 
@@ -49,14 +54,21 @@ async function loadTools() {
     // Import and register each tool
     for (const file of files) {
       if (file.endsWith('.js')) {
+        // FILTRAR auth-tool.js e auth-helper.js
+        // A autenticação agora é automática via middleware
+        if (file === 'auth-tool.js' || file === 'auth-helper.js') {
+          console.log(`⚠️  Skipping ${file} - autenticação agora é automática via middleware`);
+          continue;
+        }
+
         try {
           const toolPath = path.join(toolsDir, file);
           const toolModule = await import(`file://${toolPath}`);
-          
+
           if (toolModule.default && typeof toolModule.default === 'function') {
             // Register with MCP server
             toolModule.default(server);
-            
+
             // Store tool info for HTTP mode
             const toolName = file.replace('.js', '').replace('-tool', '');
             loadedTools.set(toolName, toolModule.default);
@@ -244,11 +256,13 @@ function createHttpServer() {
   
   // Health check endpoint
   app.get('/health', (req, res) => {
-    res.json({ 
-      status: 'healthy', 
-      mode: 'http', 
+    const authStatus = authManager.getAuthStatus();
+    res.json({
+      status: 'healthy',
+      mode: 'http',
       tools: Array.from(loadedTools.keys()),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      authentication: authStatus
     });
   });
   
