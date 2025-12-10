@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-purple.svg)](https://modelcontextprotocol.io/)
-[![Tools](https://img.shields.io/badge/Tools-7-orange.svg)](#-ferramentas-disponíveis)
+[![Tools](https://img.shields.io/badge/Tools-17-orange.svg)](#-ferramentas-disponíveis)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-success.svg)](#)
 
 <p align="center">
@@ -117,13 +117,21 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 - **Modo Híbrido**: Execute ambos simultaneamente (recomendado)
 - **Zero Dependências Externas**: Sem necessidade de MCPO ou proxies
 
-### 🛠️ 7 Ferramentas Veeam Abrangentes
+### 🛠️ 17 Ferramentas Veeam Abrangentes
 
 | Categoria | Ferramenta | Descrição |
 |-----------|------------|-----------|
 | **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados |
+| **Jobs** | `get-backup-copy-jobs` | Lista Backup Copy jobs (3-2-1 compliance) |
+| **Jobs** | `get-job-details` | Informações detalhadas de job específico |
+| **Jobs** | `get-job-schedule` | Detalhes de scheduling de um job |
+| **Controle** | `start-backup-job` | Inicia job de backup sob demanda |
+| **Controle** | `stop-backup-job` | Para job de backup em execução |
 | **Sessões** | `get-backup-sessions` | Histórico de execuções de backup |
-| **Detalhes** | `get-job-details` | Informações detalhadas de job específico |
+| **Sessões** | `get-running-sessions` | Lista sessions em execução (real-time) |
+| **Sessões** | `get-failed-sessions` | Lista sessions que falharam (troubleshooting) |
+| **Sessões** | `get-session-log` | Logs detalhados de uma session |
+| **Restore** | `get-restore-points` | Lista restore points de uma VM |
 | **Infraestrutura** | `get-backup-proxies` | Status dos servidores proxy |
 | **Armazenamento** | `get-backup-repositories` | Informações de repositórios |
 | **Licenciamento** | `get-license-info` | Detalhes da licença Veeam |
@@ -186,8 +194,8 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │              7 Ferramentas Compartilhadas                   │ │
-│  │  Jobs | Sessions | Details | Proxies | Repos | License | Info│ │
+│  │              17 Ferramentas Compartilhadas                  │ │
+│  │  Jobs | Control | Sessions | Restore | Infra | License     │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                                │

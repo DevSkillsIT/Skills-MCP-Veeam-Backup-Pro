@@ -10,6 +10,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { authManager } from "./lib/auth-middleware.js";
+import { randomUUID } from 'crypto';
+import { mcpAuthMiddleware } from "./lib/mcp-auth-middleware.js";
+import { getMCPToolsList, isValidTool, getToolSchema } from "./lib/mcp-tools-dictionary.js";
 
 // Get the directory path
 const __filename = fileURLToPath(import.meta.url);
@@ -24,9 +27,10 @@ const isHttpMode = args.includes('--http');
 const isMcpMode = args.includes('--mcp');
 const httpPort = parseInt(args.find(arg => arg.startsWith('--port='))?.split('=')[1]) || parseInt(process.env.HTTP_PORT) || 8825;
 
-// Default to both modes if no specific mode is specified
-const runHttpMode = isHttpMode || (!isMcpMode && !isHttpMode);
-const runMcpMode = isMcpMode || (!isMcpMode && !isHttpMode);
+// Default to HTTP mode only (MCP stdio apenas com flag --mcp)
+// Modo padrão: HTTP Streamable na porta 8825
+const runHttpMode = !isMcpMode; // Sempre HTTP, exceto se --mcp explícito
+const runMcpMode = isMcpMode;   // Apenas com flag --mcp
 
 // Create an MCP server
 const server = new McpServer({
@@ -39,6 +43,24 @@ const toolsDir = path.join(__dirname, "tools");
 
 // Store loaded tools for HTTP mode
 const loadedTools = new Map();
+
+// ============================================
+// Session Management para MCP HTTP Streamable
+// ============================================
+const mcpSessions = new Map();
+
+// Cleanup de sessões expiradas a cada 60 segundos
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, session] of mcpSessions.entries()) {
+    if (now - session.createdAt > 15 * 60 * 1000) { // 15 minutos
+      mcpSessions.delete(sessionId);
+      console.log(`[MCP] 🗑️  Session expirada e removida: ${sessionId}`);
+    }
+  }
+}, 60000);
+
+console.log('[MCP] ✅ Session management inicializado (timeout: 15 min)');
 
 // Dynamically load all tools
 async function loadTools() {
@@ -141,6 +163,87 @@ function generateOpenAPISchema(toolName, toolFunction) {
       }
     }
   };
+}
+
+// ============================================
+// MCP Protocol Handlers
+// ============================================
+
+/**
+ * Handler: initialize
+ * Handshake obrigatório do protocolo MCP
+ */
+async function handleMCPInitialize() {
+  console.log('[MCP] 🤝 Initialize request recebida');
+  return {
+    protocolVersion: '2024-11-05',
+    capabilities: {
+      tools: {}
+    },
+    serverInfo: {
+      name: 'veeam-backup',
+      version: '1.0.0'
+    }
+  };
+}
+
+/**
+ * Handler: tools/list
+ * Retorna lista de 15 ferramentas disponíveis
+ */
+async function handleMCPToolsList() {
+  const tools = getMCPToolsList();
+  console.log(`[MCP] 📋 Retornando lista de ${tools.length} ferramentas`);
+  return { tools };
+}
+
+/**
+ * Handler: tools/call
+ * Executa uma ferramenta específica
+ */
+async function handleMCPToolCall(params) {
+  const { name, arguments: args } = params;
+
+  console.log(`[MCP] 🔧 Executando tool: ${name}`);
+
+  // Validar se tool existe
+  if (!isValidTool(name)) {
+    const availableTools = Array.from(loadedTools.keys()).join(', ');
+    throw new Error(
+      `Tool desconhecida: "${name}". ` +
+      `Tools disponíveis: ${availableTools}`
+    );
+  }
+
+  // Obter função da tool do Map
+  const toolFunction = loadedTools.get(name);
+  if (!toolFunction) {
+    throw new Error(`Tool "${name}" não está carregada no servidor`);
+  }
+
+  // Criar mock MCP server context (REUTILIZAR PADRÃO EXISTENTE)
+  const mockServer = {
+    tool: (toolName, schema, handler) => {
+      mockServer.currentHandler = handler;
+    }
+  };
+
+  // Registrar tool para obter handler
+  toolFunction(mockServer);
+
+  if (!mockServer.currentHandler) {
+    throw new Error(`Handler não encontrado para tool: ${name}`);
+  }
+
+  // Executar tool com argumentos
+  const startTime = Date.now();
+  const result = await mockServer.currentHandler(args);
+  const duration = Date.now() - startTime;
+
+  console.log(`[MCP] ✅ Tool "${name}" executada em ${duration}ms`);
+
+  // Retornar resultado no formato MCP
+  return result;
 }
 
 // Create HTTP server with OpenAPI endpoints
@@ -257,12 +360,37 @@ function createHttpServer() {
   // Health check endpoint
   app.get('/health', (req, res) => {
     const authStatus = authManager.getAuthStatus();
+    const httpAuthConfigured = !!process.env.AUTH_TOKEN;
+
     res.json({
       status: 'healthy',
-      mode: 'http',
+      mode: runHttpMode && runMcpMode ? 'hybrid' : (runHttpMode ? 'http' : 'mcp'),
       tools: Array.from(loadedTools.keys()),
+      toolsCount: loadedTools.size,
       timestamp: new Date().toISOString(),
-      authentication: authStatus
+      veeamAuthentication: authStatus,
+      httpAuthentication: {
+        configured: httpAuthConfigured,
+        type: 'Bearer Token',
+        enabled: httpAuthConfigured
+      },
+      mcpSessions: {
+        active: mcpSessions.size,
+        total: mcpSessions.size
+      },
+      endpoints: {
+        health: 'GET /health (público)',
+        mcpPost: 'POST /mcp (JSON-RPC + autenticação)',
+        mcpGet: 'GET /mcp (SSE + autenticação)',
+        mcpDelete: 'DELETE /mcp (Session + autenticação)',
+        docs: 'GET /docs (Swagger UI)',
+        openapi: 'GET /openapi.json'
+      },
+      mcpProtocol: {
+        version: '2024-11-05',
+        methods: ['initialize', 'tools/list', 'tools/call'],
+        transport: 'HTTP Streamable'
+      }
     });
   });
   
@@ -281,7 +409,129 @@ function createHttpServer() {
       }
     });
   });
-  
+
+  // ============================================
+  // MCP HTTP Streamable Endpoints (com autenticação Bearer Token)
+  // ============================================
+
+  // GET /mcp - SSE endpoint para notificações server-to-client (Gemini CLI requirement)
+  app.get('/mcp', mcpAuthMiddleware, (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] || randomUUID();
+
+    console.log(`[MCP] 🔌 SSE connection opened: ${sessionId}`);
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Mcp-Session-Id', sessionId);
+    res.flushHeaders();
+
+    // Registrar sessão
+    mcpSessions.set(sessionId, { createdAt: Date.now(), res });
+
+    // Enviar evento inicial de endpoint
+    res.write('event: endpoint\ndata: /mcp\n\n');
+
+    // Keepalive a cada 30 segundos
+    const keepAlive = setInterval(() => {
+      if (!res.writableEnded) {
+        res.write(':keepalive\n\n');
+      }
+    }, 30000);
+
+    // Cleanup ao fechar conexão
+    req.on('close', () => {
+      clearInterval(keepAlive);
+      mcpSessions.delete(sessionId);
+      console.log(`[MCP] 🔌 SSE connection closed: ${sessionId}`);
+    });
+  });
+
+  // DELETE /mcp - Terminação de sessão (Gemini CLI requirement)
+  app.delete('/mcp', mcpAuthMiddleware, (req, res) => {
+    const sessionId = req.headers['mcp-session-id'];
+
+    if (sessionId && mcpSessions.has(sessionId)) {
+      mcpSessions.delete(sessionId);
+      console.log(`[MCP] 🗑️  Session terminada: ${sessionId}`);
+    }
+
+    res.status(200).json({
+      status: 'session_terminated',
+      sessionId: sessionId || 'none'
+    });
+  });
+
+  // POST /mcp - JSON-RPC handler principal (Claude Code + Gemini CLI)
+  app.post('/mcp', mcpAuthMiddleware, async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] || randomUUID();
+
+    // Retornar session ID no header
+    res.setHeader('Mcp-Session-Id', sessionId);
+
+    // Registrar/atualizar sessão
+    if (!mcpSessions.has(sessionId)) {
+      mcpSessions.set(sessionId, { createdAt: Date.now() });
+    }
+
+    console.log(`[MCP] 📥 Request recebida:`, {
+      method: req.body?.method,
+      id: req.body?.id,
+      sessionId,
+      tool: req.body?.params?.name || 'N/A'
+    });
+
+    try {
+      const { method, params, id, jsonrpc } = req.body;
+      let result;
+
+      // Router de métodos MCP
+      switch (method) {
+        case 'initialize':
+          result = await handleMCPInitialize();
+          break;
+
+        case 'tools/list':
+          result = await handleMCPToolsList();
+          break;
+
+        case 'tools/call':
+          result = await handleMCPToolCall(params);
+          break;
+
+        case 'notifications/initialized':
+          // Notificação do protocolo MCP - apenas confirmar
+          console.log('[MCP] 🔔 Notification: initialized');
+          result = {};
+          break;
+
+        default:
+          throw new Error(`Método não suportado: ${method}`);
+      }
+
+      // Retornar resposta JSON-RPC de sucesso
+      res.json({
+        jsonrpc: jsonrpc || '2.0',
+        id: id,
+        result: result
+      });
+
+    } catch (error) {
+      console.error('[MCP] ❌ Erro:', error.message);
+
+      // Retornar erro JSON-RPC
+      res.json({
+        jsonrpc: req.body?.jsonrpc || '2.0',
+        id: req.body?.id || null,
+        error: {
+          code: -32000,
+          message: error.message
+        }
+      });
+    }
+  });
+
   return app;
 }
 
