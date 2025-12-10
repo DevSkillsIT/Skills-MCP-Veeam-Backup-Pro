@@ -221,10 +221,14 @@ async function handleMCPToolCall(params) {
     throw new Error(`Tool "${name}" não está carregada no servidor`);
   }
 
-  // Criar mock MCP server context (REUTILIZAR PADRÃO EXISTENTE)
+  // Criar mock MCP server context (SUPORTA 3 OU 4 PARÂMETROS)
+  // Formato novo (SDK correto): (toolName, schema, handler)
+  // Formato antigo (compatibilidade): (toolName, schema, description, handler)
   const mockServer = {
-    tool: (toolName, schema, handler) => {
-      mockServer.currentHandler = handler;
+    tool: (toolName, schema, handlerOrDescription, optionalHandler) => {
+      // Se 4º parâmetro existe, handler está no 4º parâmetro (formato antigo)
+      // Se 4º parâmetro não existe, handler está no 3º parâmetro (formato novo)
+      mockServer.currentHandler = optionalHandler || handlerOrDescription;
     }
   };
 

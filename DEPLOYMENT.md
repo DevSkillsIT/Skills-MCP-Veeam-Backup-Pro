@@ -1,10 +1,13 @@
-# Deployment Guide - Veeam VBR MCP Hybrid Server
+# Deployment Guide - Veeam VBR MCP Server
 
 **Guia completo de deployment para ambientes de desenvolvimento, staging e produção**
 
+**Atualizado em:** 2025-12-10
+**Versão do Protocolo:** MCP 2024-11-05 (HTTP Streamable com Bearer Token)
+
 ---
 
-Este guia cobre o deployment do servidor MCP híbrido Veeam em diversos ambientes e configurações.
+Este guia cobre o deployment do servidor MCP Veeam com suporte ao protocolo HTTP Streamable (2024-11-05), compatível com Claude Code e Gemini CLI.
 
 ## 🏗️ Architecture Overview
 
@@ -72,9 +75,66 @@ docker-compose logs -f
 
 ## 🎯 Deployment Modes
 
-### Mode 1: Traditional MCP Only
+### Mode 1: MCP HTTP Streamable (Recomendado) ⭐
 
-For Claude Desktop and other MCP clients:
+Para Claude Code, Gemini CLI e clientes modernos MCP:
+
+```bash
+# Command line (porta padrão 8825)
+node vbr-mcp-server.js --port=8825
+
+# Startup script
+./start.sh
+
+# Docker
+docker run -d -p 8825:8825 veeam-mcp:latest node vbr-mcp-server.js --port=8825
+```
+
+**Configuration for Claude Code:**
+
+```json
+{
+  "mcpServers": {
+    "veeam-backup": {
+      "type": "streamable-http",
+      "url": "http://localhost:8825/mcp",
+      "headers": {
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+      }
+    }
+  }
+}
+```
+
+**Configuration for Gemini CLI:**
+
+```json
+{
+  "mcpServers": {
+    "veeam-backup": {
+      "httpUrl": "http://localhost:8825/mcp",
+      "headers": {
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+      },
+      "timeout": 30000
+    }
+  }
+}
+```
+
+**Recursos Disponíveis:**
+- ✅ Endpoints JSON-RPC 2.0 (POST /mcp)
+- ✅ Server-Sent Events (GET /mcp)
+- ✅ Session Management (DELETE /mcp)
+- ✅ Autenticação Bearer Token
+- ✅ Health Check (GET /health)
+- ✅ 15 ferramentas Veeam
+
+---
+
+### Mode 2: Traditional MCP stdio (Legacy)
+
+For Claude Desktop and other stdio-based MCP clients:
 
 ```bash
 # Command line
@@ -84,7 +144,7 @@ node vbr-mcp-server.js --mcp
 ./start.sh --mcp
 
 # Docker
-docker run -it --rm veeam-mcp-hybrid:latest node vbr-mcp-server.js --mcp
+docker run -it --rm veeam-mcp:latest node vbr-mcp-server.js --mcp
 ```
 
 **Configuration for Claude Desktop:**
@@ -132,9 +192,9 @@ docker run -it --rm veeam-mcp-hybrid:latest node vbr-mcp-server.js --mcp
 - **Restart Claude Desktop**: After changing config, restart Claude Desktop
 - **Check logs**: If tools don't appear, check server logs for errors
 
-### Mode 2: HTTP/OpenAPI Only
+### Mode 3: HTTP/OpenAPI (REST API)
 
-For Copilot Studio and web-based clients:
+For Copilot Studio, APIs web e outros clientes HTTP:
 
 ```bash
 # Command line
@@ -157,13 +217,13 @@ docker run -d -p 8000:8000 veeam-mcp-hybrid:latest node vbr-mcp-server.js --http
   - `http://your-server:8000/backup-sessions`
   - `http://your-server:8000/license-tools`
 
-### Mode 3: Hybrid (Both Modes)
+### Mode 4: Hybrid (MCP Streamable + stdio + REST)
 
-Run both MCP and HTTP simultaneously:
+Execute todos os protocolos simultaneamente (máxima compatibilidade):
 
 ```bash
 # Command line
-node vbr-mcp-server.js --port=8000
+node vbr-mcp-server.js --port=8825
 
 # Startup script
 ./start.sh
@@ -171,6 +231,13 @@ node vbr-mcp-server.js --port=8000
 # Docker (default)
 docker-compose up -d
 ```
+
+**Suporta:**
+- ✅ Claude Code (MCP HTTP Streamable)
+- ✅ Gemini CLI (MCP HTTP Streamable)
+- ✅ Claude Desktop (MCP stdio)
+- ✅ Copilot Studio (REST API)
+- ✅ APIs Web (REST API)
 
 ## 🐳 Docker Deployment
 
@@ -235,21 +302,41 @@ docker-compose -f docker-compose.staging.yml up -d
 
 ## 🔒 Security Configuration
 
-### 1. API Key Authentication
+### 1. MCP Bearer Token Authentication
 
-Enable in `config.json`:
-```json
-{
-  "modes": {
-    "http": {
-      "authentication": {
-        "enabled": true,
-        "apiKey": "your-secure-api-key"
-      }
-    }
-  }
-}
+**Configuração obrigatória** para endpoints MCP HTTP Streamable.
+
+**Arquivo .env:**
+```bash
+# MCP HTTP Streamable Authentication
+AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
 ```
+
+**Gerar Token Seguro:**
+```bash
+# Gerar token aleatório de 64 caracteres
+openssl rand -hex 32
+# ou
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**Validação:**
+```bash
+# Testar autenticação
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+```
+
+**Endpoints Protegidos:**
+- `POST /mcp` - JSON-RPC handler
+- `GET /mcp` - SSE endpoint
+- `DELETE /mcp` - Session termination
+
+**Endpoints Públicos:**
+- `GET /health` - Health check (sem autenticação)
+- `GET /` - Root (informações básicas)
 
 ### 2. CORS Configuration
 

@@ -6,7 +6,15 @@ import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
-import { enrichSessionData, calculateSessionStats, formatProgress } from "../lib/format-helpers.js";
+import {
+  enrichSessionData,
+  calculateSessionStats,
+  formatProgress,
+  categorizeSessionType,
+  isBackupJob,
+  isSystemTask,
+  formatSessionType
+} from "../lib/format-helpers.js";
 import { enrichListResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
 
 // HTTPS agent com suporte a certificados self-signed
@@ -115,39 +123,25 @@ export default function(server) {
         // Assumindo que sessions progridem linearmente (simplificação)
         const estimatedTimeRemaining = calculateEstimatedTime(enrichedSessions);
 
-        // Agrupar por tipo de job
-        const sessionsByType = {};
-        enrichedSessions.forEach(session => {
-          const type = session.sessionType || 'Unknown';
-          if (!sessionsByType[type]) {
-            sessionsByType[type] = [];
-          }
-          sessionsByType[type].push(session);
-        });
+        // ═══════════════════════════════════════════════════════════════
+        // CATEGORIZAÇÃO: Separar Backup Jobs de System Tasks
+        // ═══════════════════════════════════════════════════════════════
+        const backupJobs = [];
+        const systemTasks = [];
 
-        // Construir resposta enriquecida
-        const responseData = {
-          summary: {
-            message: `${enrichedSessions.length} session(s) em execução no momento`,
-            count: enrichedSessions.length,
-            averageProgress: `${averageProgress.toFixed(2)}%`,
-            averageProgressFormatted: formatProgress(averageProgress),
-            estimatedTimeRemaining: estimatedTimeRemaining,
-            timestamp: new Date().toISOString()
-          },
-          statistics: {
-            totalSessions: enrichedSessions.length,
-            byType: Object.keys(sessionsByType).map(type => ({
-              type,
-              count: sessionsByType[type].length,
-              sessions: sessionsByType[type].map(s => s.name)
-            })),
-            ...stats
-          },
-          sessions: enrichedSessions.map(session => ({
+        enrichedSessions.forEach(session => {
+          const categorization = categorizeSessionType(session.sessionType);
+
+          // Enriquecer session com categorização
+          const categorizedSession = {
             id: session.id,
             name: session.name,
             sessionType: session.sessionType,
+            sessionTypeFormatted: formatSessionType(session.sessionType),
+            category: categorization.category,
+            categoryFormatted: categorization.categoryFormatted,
+            isBackupJob: categorization.isBackupJob,
+            isSystemTask: categorization.isSystemTask,
             platformName: session.platformName,
             state: session.state,
             stateFormatted: session.stateFormatted,
@@ -158,8 +152,86 @@ export default function(server) {
             duration: session.durationFormatted,
             result: session.result?.result,
             resultFormatted: session.resultFormatted,
-            message: session.result?.message || "Em execução..."
-          }))
+            message: session.result?.message || "Em execução...",
+            icon: categorization.icon
+          };
+
+          // Adicionar no array correto
+          if (categorization.isBackupJob) {
+            backupJobs.push(categorizedSession);
+          } else {
+            systemTasks.push(categorizedSession);
+          }
+        });
+
+        // Agrupar por tipo de job (para estatísticas)
+        const sessionsByType = {};
+        enrichedSessions.forEach(session => {
+          const type = session.sessionType || 'Unknown';
+          if (!sessionsByType[type]) {
+            sessionsByType[type] = [];
+          }
+          sessionsByType[type].push(session);
+        });
+
+        // Construir resposta enriquecida com categorização
+        const responseData = {
+          summary: {
+            message: `${backupJobs.length} backup job(s) e ${systemTasks.length} system task(s) em execução`,
+            total: enrichedSessions.length,
+            backupJobsCount: backupJobs.length,
+            systemTasksCount: systemTasks.length,
+            averageProgress: `${averageProgress.toFixed(2)}%`,
+            averageProgressFormatted: formatProgress(averageProgress),
+            estimatedTimeRemaining: estimatedTimeRemaining,
+            timestamp: new Date().toISOString(),
+            // Explicação clara para usuário
+            explanation: {
+              backupJobs: "Backups reais (BackupJob, ReplicaJob, BackupCopyJob) - são trabalhos de backup/replicação",
+              systemTasks: "Tarefas de sistema (MalwareDetection, SureBackup, etc) - manutenção e segurança, NÃO são backups"
+            }
+          },
+          // Separar categorias na raiz da resposta
+          backupJobs: backupJobs,
+          systemTasks: systemTasks,
+          statistics: {
+            totalSessions: enrichedSessions.length,
+            byCategory: {
+              backupJobs: backupJobs.length,
+              systemTasks: systemTasks.length
+            },
+            byType: Object.keys(sessionsByType).map(type => ({
+              type,
+              typeFormatted: formatSessionType(type),
+              count: sessionsByType[type].length,
+              sessions: sessionsByType[type].map(s => s.name)
+            })),
+            ...stats
+          },
+          // Lista completa (para compatibilidade com código existente)
+          sessions: enrichedSessions.map(session => {
+            const categorization = categorizeSessionType(session.sessionType);
+            return {
+              id: session.id,
+              name: session.name,
+              sessionType: session.sessionType,
+              sessionTypeFormatted: formatSessionType(session.sessionType),
+              category: categorization.category,
+              isBackupJob: categorization.isBackupJob,
+              isSystemTask: categorization.isSystemTask,
+              platformName: session.platformName,
+              state: session.state,
+              stateFormatted: session.stateFormatted,
+              progressPercent: session.progressPercent,
+              progressFormatted: session.progressFormatted,
+              creationTime: session.creationTime,
+              creationTimeFormatted: session.creationTimeFormatted,
+              duration: session.durationFormatted,
+              result: session.result?.result,
+              resultFormatted: session.resultFormatted,
+              message: session.result?.message || "Em execução..."
+            };
+          })
         };
 
         // Aplicar enriquecimento de lista

@@ -77,7 +77,7 @@ Obrigado por considerar contribuir para o Veeam Backup & Replication MCP Server!
 
 ```bash
 # Via GitHub UI
-1. Acesse: https://github.com/skillsit/veeam-backup-mcp
+1. Acesse: https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro
 2. Clique em "Fork" no canto superior direito
 3. Selecione sua conta como destino do fork
 ```
@@ -90,14 +90,14 @@ git clone https://github.com/SEU-USUARIO/veeam-backup-mcp.git
 cd veeam-backup-mcp
 
 # Adicione o repositório original como remote
-git remote add upstream https://github.com/skillsit/veeam-backup-mcp.git
+git remote add upstream https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro.git
 
 # Verifique remotes
 git remote -v
-# origin    https://github.com/SEU-USUARIO/veeam-backup-mcp.git (fetch)
-# origin    https://github.com/SEU-USUARIO/veeam-backup-mcp.git (push)
-# upstream  https://github.com/skillsit/veeam-backup-mcp.git (fetch)
-# upstream  https://github.com/skillsit/veeam-backup-mcp.git (push)
+# origin    https://github.com/SEU-USUARIO/Skills-MCP-Veeam-Backup-Pro.git (fetch)
+# origin    https://github.com/SEU-USUARIO/Skills-MCP-Veeam-Backup-Pro.git (push)
+# upstream  https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro.git (fetch)
+# upstream  https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro.git (push)
 ```
 
 #### Passo 3: Crie uma Branch para Sua Feature
@@ -527,20 +527,72 @@ cp env.example .env
 nano .env  # Edite com credenciais de desenvolvimento
 
 # 3. Inicie servidor
-npm start  # Modo híbrido
+npm start  # Modo híbrido (recomendado)
 # ou
 npm run start:http  # Apenas HTTP
 # ou
-npm run start:mcp  # Apenas MCP
+npm run start:mcp  # Apenas MCP stdio
 ```
 
-### Testando Tools via Curl
+### Testando Protocolo MCP HTTP Streamable
+
+**Scripts de Teste Automatizados:**
 
 ```bash
-# Health check
+# 1. Testar todos os endpoints MCP (initialize, tools/list, tools/call, etc.)
+cd /opt/mcp-servers/veeam-backup/tests
+./test-mcp-endpoint.sh
+
+# Saída esperada: 11/11 testes passando
+# - Health Check
+# - Autenticação (sem token, token inválido)
+# - Initialize (handshake MCP)
+# - Tools List
+# - Tools Call (3 ferramentas)
+# - Session Management
+# - Método não suportado
+
+# 2. Testar todas as ferramentas individualmente
+./test-all-tools.sh
+
+# Saída esperada: 10/10 ferramentas testadas passando
+# (5 ferramentas puladas - requerem IDs específicos ou alteram estado)
+```
+
+**Teste Manual via curl:**
+
+```bash
+# Health check (sem autenticação)
 curl http://localhost:8825/health
 
-# Lista de jobs
+# Teste de autenticação
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+
+# Executar ferramenta específica
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{
+      "name":"get-backup-jobs",
+      "arguments":{}
+    },
+    "id":1
+  }'
+```
+
+### Testando Tools via REST API (Legacy)
+
+```bash
+# Health check (público - sem autenticação)
+curl http://localhost:8825/health
+
+# Lista de jobs (endpoint REST legado)
 curl -X POST http://localhost:8825/backup-jobs \
   -H 'Content-Type: application/json' \
   -d '{}'
@@ -556,8 +608,11 @@ curl -X POST http://localhost:8825/job-details \
   -d '{"jobName": "SQL-Backup-Daily"}'
 ```
 
-### Testando com Claude Desktop
+**Nota:** Os endpoints REST (não-MCP) são mantidos para compatibilidade com Copilot Studio. Para clientes modernos (Claude Code, Gemini CLI), use o protocolo MCP HTTP Streamable via `/mcp`.
 
+### Testando com Clientes MCP
+
+**Claude Desktop (stdio):**
 ```json
 // ~/.config/Claude/claude_desktop_config.json
 {
@@ -568,6 +623,38 @@ curl -X POST http://localhost:8825/job-details \
         "/caminho/absoluto/para/veeam-backup-mcp/vbr-mcp-server.js",
         "--mcp"
       ]
+    }
+  }
+}
+```
+
+**Claude Code (HTTP Streamable):**
+```json
+// .mcp.json ou ~/.claude/settings.json
+{
+  "mcpServers": {
+    "veeam-backup-dev": {
+      "type": "streamable-http",
+      "url": "http://localhost:8825/mcp",
+      "headers": {
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+      }
+    }
+  }
+}
+```
+
+**Gemini CLI (HTTP Streamable):**
+```json
+// ~/.gemini/settings.json
+{
+  "mcpServers": {
+    "veeam-backup-dev": {
+      "httpUrl": "http://localhost:8825/mcp",
+      "headers": {
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+      },
+      "timeout": 30000
     }
   }
 }

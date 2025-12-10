@@ -1,6 +1,9 @@
 # Arquitetura e Design - Veeam Backup & Replication MCP Server
 
-**Documentação técnica completa da arquitetura híbrida MCP/HTTP**
+**Documentação técnica completa da arquitetura MCP HTTP Streamable (2024-11-05)**
+
+**Atualizado em:** 2025-12-10
+**Versão do Protocolo:** MCP 2024-11-05 (JSON-RPC 2.0 sobre HTTP)
 
 ---
 
@@ -8,9 +11,11 @@
 
 - [Visão Geral](#-visão-geral)
 - [Problema e Solução](#-problema-e-solução)
-- [Arquitetura Híbrida](#-arquitetura-híbrida)
+- [Arquitetura MCP HTTP Streamable](#-arquitetura-mcp-http-streamable)
+- [Endpoints MCP Implementados](#-endpoints-mcp-implementados)
+- [Session Management](#-session-management)
 - [Fluxo de Dados](#-fluxo-de-dados)
-- [Autenticação Automática](#-autenticação-automática)
+- [Autenticação Bearer Token](#-autenticação-bearer-token)
 - [Comparação com MCPO](#-comparação-com-mcpo)
 - [Escalabilidade](#-escalabilidade)
 - [Segurança](#-segurança)
@@ -20,12 +25,14 @@
 
 ## 🎯 Visão Geral
 
-O Veeam Backup & Replication MCP Server implementa uma **arquitetura híbrida única** que executa simultaneamente dois protocolos de comunicação distintos:
+O Veeam Backup & Replication MCP Server implementa o **protocolo MCP HTTP Streamable (2024-11-05)**, a mais recente especificação do Model Context Protocol, que permite comunicação via HTTP com JSON-RPC 2.0:
 
-1. **Protocolo MCP (stdio)**: Para clientes nativos MCP (Claude Desktop)
-2. **Protocolo HTTP/REST**: Para clientes OpenAPI (Copilot Studio, Gemini CLI)
+1. **Protocolo MCP HTTP Streamable**: Para clientes modernos (Claude Code, Gemini CLI)
+2. **Protocolo MCP stdio (legacy)**: Para clientes nativos MCP (Claude Desktop)
+3. **Autenticação Bearer Token**: Segurança integrada em todas as requisições
+4. **Session Management**: Controle de sessões com UUID e timeout automático
 
-Esta arquitetura elimina a necessidade de proxies externos (como MCPO) enquanto mantém total compatibilidade com ambos os ecossistemas.
+Esta arquitetura garante compatibilidade universal com todos os clientes MCP e APIs HTTP, eliminando a necessidade de proxies externos.
 
 ### Princípios de Design
 
@@ -33,6 +40,313 @@ Esta arquitetura elimina a necessidade de proxies externos (como MCPO) enquanto 
 - **Zero Overhead**: Comunicação direta sem camadas intermediárias
 - **Transparent Auth**: Autenticação gerenciada automaticamente via middleware
 - **Developer Friendly**: API clara e documentação completa (Swagger UI)
+
+---
+
+## 🔌 Endpoints MCP Implementados
+
+### POST /mcp - JSON-RPC Handler Principal
+
+**Descrição:** Endpoint principal do protocolo MCP que processa todas as requisições JSON-RPC 2.0.
+
+**Localização:** `vbr-mcp-server.js:467-595`
+
+**Métodos Suportados:**
+
+#### 1. initialize (Handshake Obrigatório)
+
+**Descrição:** Primeiro método chamado pelo cliente MCP ao conectar. **CRÍTICO:** Sem este método, o MCP aparece como "errored" no cliente.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "initialize",
+  "params": {},
+  "id": 1
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "veeam-backup-mcp",
+      "version": "1.0.0"
+    },
+    "capabilities": {
+      "tools": {}
+    }
+  }
+}
+```
+
+#### 2. tools/list (Lista de Ferramentas)
+
+**Descrição:** Retorna todas as ferramentas disponíveis com seus schemas JSON Schema.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/list",
+  "id": 2
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "get-backup-jobs",
+        "description": "Lista todos os jobs de backup configurados",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      // ... 14 outras ferramentas
+    ]
+  }
+}
+```
+
+#### 3. tools/call (Execução de Ferramenta)
+
+**Descrição:** Executa uma ferramenta específica com argumentos fornecidos.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "get-backup-jobs",
+    "arguments": {}
+  },
+  "id": 3
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"id\":\"job-123\",\"name\":\"VM-Production\"}]"
+      }
+    ]
+  }
+}
+```
+
+**Headers de Resposta:**
+- `Content-Type: application/json`
+- `Mcp-Session-Id: <UUID>` - ID da sessão para rastreamento
+
+**Erros JSON-RPC:**
+- `-32600`: Invalid Request (malformed JSON-RPC)
+- `-32601`: Method Not Found (método não implementado)
+- `-32602`: Invalid Params (parâmetros inválidos)
+- `-32000`: Server Error (erro interno do servidor)
+
+---
+
+### GET /mcp - Server-Sent Events (SSE)
+
+**Descrição:** Endpoint SSE para notificações server-to-client. Necessário para compatibilidade com Gemini CLI.
+
+**Localização:** `vbr-mcp-server.js:418-450`
+
+**Comportamento:**
+```javascript
+// Cliente conecta ao endpoint GET /mcp
+// Servidor responde com stream SSE
+
+// Headers de resposta
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+Mcp-Session-Id: <UUID>
+
+// Stream de eventos
+event: connected
+data: {"sessionId": "<UUID>"}
+
+// Keepalive a cada 5 segundos
+event: ping
+data: {}
+```
+
+**Funcionalidades:**
+- ✅ Keepalive automático (5 segundos)
+- ✅ Geração de session ID
+- ✅ Limpeza ao desconectar cliente
+- ✅ Suporte a notificações futuras
+
+**Uso:**
+```bash
+# Testar SSE endpoint
+curl -N -H "Authorization: Bearer TOKEN" \
+  http://localhost:8825/mcp
+```
+
+---
+
+### DELETE /mcp - Terminação de Sessão
+
+**Descrição:** Termina uma sessão MCP de forma graceful, liberando recursos.
+
+**Localização:** `vbr-mcp-server.js:452-465`
+
+**Request Headers:**
+```
+Authorization: Bearer <TOKEN>
+Mcp-Session-Id: <UUID>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Session terminated successfully"
+}
+```
+
+**Funcionalidades:**
+- ✅ Remoção da sessão ativa
+- ✅ Limpeza de recursos associados
+- ✅ Resposta de confirmação
+
+**Uso:**
+```bash
+# Terminar sessão
+curl -X DELETE \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Mcp-Session-Id: UUID" \
+  http://localhost:8825/mcp
+```
+
+---
+
+### GET /health - Health Check
+
+**Descrição:** Endpoint público de health check (sem autenticação) para monitoramento.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "toolsCount": 15,
+  "activeSessions": 3,
+  "httpAuthentication": {
+    "configured": true,
+    "method": "Bearer Token"
+  },
+  "timestamp": "2025-12-10T10:30:45.123Z"
+}
+```
+
+**Uso:**
+```bash
+# Health check (sem autenticação necessária)
+curl http://localhost:8825/health
+```
+
+---
+
+## 🔐 Session Management
+
+### Estrutura de Sessão
+
+```javascript
+const activeSessions = new Map();
+
+// Estrutura de cada sessão
+{
+  id: "uuid-v4-here",
+  createdAt: 1702201845000,
+  lastActivity: 1702201900000,
+  clientIp: "192.168.1.100",
+  userAgent: "Claude Code/1.0"
+}
+```
+
+### Ciclo de Vida de Sessão
+
+```
+1. Cliente conecta (POST /mcp ou GET /mcp)
+   └─> Servidor gera UUID v4
+   └─> Adiciona à activeSessions Map
+   └─> Retorna Mcp-Session-Id header
+
+2. Cliente faz requisições
+   └─> Atualiza lastActivity timestamp
+   └─> Mantém sessão ativa
+
+3. Timeout (15 minutos sem atividade)
+   └─> Cleanup automático remove sessão
+   └─> Libera recursos
+
+4. Desconexão explícita (DELETE /mcp)
+   └─> Cliente envia DELETE com Mcp-Session-Id
+   └─> Servidor remove sessão imediatamente
+```
+
+### Cleanup Automático
+
+```javascript
+// Executa a cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  const TIMEOUT = 15 * 60 * 1000; // 15 minutos
+
+  for (const [sessionId, session] of activeSessions) {
+    if (now - session.lastActivity > TIMEOUT) {
+      activeSessions.delete(sessionId);
+      console.log(`Session ${sessionId} expired and removed`);
+    }
+  }
+}, 5 * 60 * 1000);
+```
+
+### Endpoint de Debug
+
+**GET /mcp-sessions** (requer autenticação)
+
+```bash
+# Listar sessões ativas
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:8825/mcp-sessions
+```
+
+**Response:**
+```json
+{
+  "activeSessions": 3,
+  "sessions": [
+    {
+      "id": "uuid-1",
+      "createdAt": "2025-12-10T10:00:00Z",
+      "lastActivity": "2025-12-10T10:05:00Z",
+      "ageMinutes": 5
+    }
+  ]
+}
+```
 
 ---
 
@@ -268,7 +582,93 @@ Copilot Studio / Gemini CLI
 
 ---
 
-## 🔐 Autenticação Automática
+## 🔐 Autenticação Bearer Token
+
+### Autenticação MCP (HTTP Streamable)
+
+**Implementação:** Middleware dedicado em `lib/mcp-auth-middleware.js`
+
+**Princípio:** Todas as requisições aos endpoints `/mcp` (POST, GET, DELETE) requerem autenticação Bearer Token.
+
+```javascript
+export function mcpAuthMiddleware(req, res, next) {
+  // 1. Bypass para endpoints públicos
+  const publicPaths = ['/', '/health', '/docs', '/openapi.json'];
+  if (publicPaths.includes(req.path)) {
+    return next();
+  }
+
+  // 2. Validar presença do header Authorization
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Missing Authorization header'
+    });
+  }
+
+  // 3. Validar formato Bearer <TOKEN>
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid Authorization format. Expected: Bearer <token>'
+    });
+  }
+
+  // 4. Extrair e validar token
+  const token = authHeader.substring(7); // Remove "Bearer "
+  const expectedToken = process.env.AUTH_TOKEN;
+
+  if (token !== expectedToken) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid authentication token'
+    });
+  }
+
+  // 5. Token válido - prosseguir
+  next();
+}
+```
+
+**Aplicação nas Rotas:**
+```javascript
+// vbr-mcp-server.js
+app.get('/mcp', mcpAuthMiddleware, (req, res) => { /* SSE */ });
+app.delete('/mcp', mcpAuthMiddleware, (req, res) => { /* Terminate */ });
+app.post('/mcp', mcpAuthMiddleware, async (req, res) => { /* JSON-RPC */ });
+```
+
+**Configuração (.env):**
+```bash
+AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+```
+
+**Teste de Autenticação:**
+```bash
+# ❌ Sem token - Retorna 401
+curl -X POST http://localhost:8825/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+
+# ❌ Token inválido - Retorna 401
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer token-errado' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+
+# ✅ Token correto - Retorna 200
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
+```
+
+**Importante:** O middleware aplica autenticação via aplicação direta em cada rota como segundo parâmetro, conforme especificação do Express.js para exact path matches.
+
+---
+
+## 🔐 Autenticação Veeam (Automática)
 
 ### Problema: Gerenciamento Manual de Tokens
 

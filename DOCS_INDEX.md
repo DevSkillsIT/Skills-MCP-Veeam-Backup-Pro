@@ -11,13 +11,14 @@
 **Quando ler:** Primeiro contato com o projeto
 
 **Conteúdo:**
-- ✅ Visão geral do projeto e MCP
+- ✅ Visão geral do projeto e MCP HTTP Streamable (2024-11-05)
 - ✅ Por que arquitetura híbrida?
 - ✅ Comparação com MCPO
 - ✅ Instalação (3 métodos)
-- ✅ Configuração básica (.env)
-- ✅ 7 ferramentas disponíveis
-- ✅ Integração com IDEs (Claude, Gemini, Copilot)
+- ✅ Configuração básica (.env + Bearer Token)
+- ✅ 16 ferramentas disponíveis (14 leitura + 2 escrita com Safety Guard)
+- ✅ Documentação detalhada de cada ferramenta com exemplos práticos e casos de uso
+- ✅ Integração com Claude Code e Gemini CLI (MCP HTTP Streamable)
 - ✅ Exemplos práticos de uso
 - ✅ Licença MIT e créditos
 
@@ -125,6 +126,27 @@
 
 ---
 
+### 7. **docs/** - Documentação Técnica Detalhada 📁
+
+**Quando ler:** Para implementações específicas e detalhes técnicos
+
+**Arquivos Disponíveis:**
+- 📄 **IMPLEMENTACAO-MCP-HTTP-STREAMABLE.md** - Implementação completa do protocolo MCP HTTP Streamable (697 linhas)
+- 📄 **SAFETY_GUARD.md** - Documentação do sistema Safety Guard para operações críticas (742 linhas)
+- 📄 **SECURITY_IMPROVEMENTS_IMPLEMENTED.md** - Melhorias de segurança implementadas
+- 📄 **QUALITY_VERIFICATION_REPORT.md** - Relatório de verificação de qualidade (manager-quality)
+- 📄 **VERIFICATION_COMPLETE.txt** - Verificação de conclusão do Safety Guard
+- 📄 **quality_verification_safety_guard.xml** - Metadata XML de qualidade
+- 📄 **QUICK_TEST_REFERENCE.md** - Referência rápida de testes (curl examples)
+- 📄 **TESTING-NEW-TOOLS.md** - Documentação de testes das 9 novas ferramentas
+- 📄 **CHANGELOG_SAFETY_GUARD.md** - Changelog detalhado do Safety Guard (versão 1.1.0)
+- 📄 **IMPLEMENTATION-SUMMARY.md** - Resumo de implementações
+- 📄 **MELHORIAS_IMPLEMENTADAS_2025-12-09.md** - Melhorias implementadas em 09/12/2025
+
+**Público-alvo:** Desenvolvedores, arquitetos, contribuidores técnicos
+
+---
+
 ## 🗺️ Fluxo de Leitura Recomendado
 
 ### Para Iniciantes (Primeira Vez)
@@ -191,24 +213,56 @@
 ├── 📄 LICENSE                         ← Licença MIT
 ├── 📄 package.json                    ← Dependências Node.js
 ├── 📄 .env.example                    ← Template de configuração
-├── 📄 docker-compose.yml              ← Docker setup
 │
 ├── 🔧 vbr-mcp-server.js               ← Servidor principal (entrypoint)
-├── 🔧 start.sh                        ← Script de inicialização
 │
 ├── 📁 lib/                            ← Bibliotecas
-│   └── auth-middleware.js             ← Autenticação automática
+│   ├── auth-middleware.js             ← Autenticação HTTP automática
+│   ├── mcp-auth-middleware.js         ← Autenticação MCP Bearer Token
+│   └── safety-guard.js                ← Proteção para operações críticas
 │
-├── 📁 tools/                          ← Ferramentas MCP (7 tools)
-│   ├── backup-jobs-tool.js
-│   ├── backup-sessions-tool.js
-│   ├── job-details-tool.js
-│   ├── backup-proxies-tool.js
-│   ├── backup-repositories-tool.js
-│   ├── license-tools.js
-│   └── server-info-tool.js
+├── 📁 tools/                          ← Ferramentas MCP (16 tools)
+│   ├── get-backup-jobs-tool.js        ← Lista todos os jobs de backup
+│   ├── get-backup-copy-jobs-tool.js   ← Jobs de cópia para compliance 3-2-1
+│   ├── get-job-details-tool.js        ← Detalhes completos de um job
+│   ├── get-job-schedule-tool.js       ← Agendamento de jobs
+│   ├── get-backup-sessions-tool.js    ← Histórico de execuções
+│   ├── get-running-sessions-tool.js   ← Todas sessões em execução
+│   ├── get-running-backup-jobs-tool.js ← Jobs de backup rodando agora
+│   ├── get-failed-sessions-tool.js    ← Sessões com falha (troubleshooting)
+│   ├── get-session-log-tool.js        ← Logs detalhados de sessão
+│   ├── get-restore-points-tool.js     ← Pontos de restauração de VMs
+│   ├── get-backup-proxies-tool.js     ← Status dos proxies
+│   ├── get-backup-repositories-tool.js ← Repositórios e capacidade
+│   ├── get-license-info-tool.js       ← Informações de licença
+│   ├── get-server-info-tool.js        ← Informações do servidor VBR
+│   ├── start-backup-job-tool.js       ← Iniciar backup sob demanda (Safety Guard)
+│   └── stop-backup-job-tool.js        ← Parar backup em execução (Safety Guard)
 │
-└── 📁 assets/                         ← Recursos visuais
+├── 📁 docs/                           ← Documentação técnica detalhada
+│   ├── IMPLEMENTACAO-MCP-HTTP-STREAMABLE.md
+│   ├── SAFETY_GUARD.md
+│   ├── SECURITY_IMPROVEMENTS_IMPLEMENTED.md
+│   ├── QUALITY_VERIFICATION_REPORT.md
+│   ├── QUICK_TEST_REFERENCE.md
+│   ├── TESTING-NEW-TOOLS.md
+│   ├── CHANGELOG_SAFETY_GUARD.md
+│   ├── IMPLEMENTATION-SUMMARY.md
+│   └── MELHORIAS_IMPLEMENTADAS_2025-12-09.md
+│
+├── 📁 tests/                          ← Scripts de teste
+│   ├── test-mcp-endpoint.sh           ← Testa protocolo MCP HTTP (11 testes)
+│   ├── test-all-tools.sh              ← Testa todas as 16 ferramentas
+│   ├── test-safety-improvements.sh    ← Testa Safety Guard
+│   ├── test-skills-it.js              ← Testes específicos Skills IT
+│   ├── test-hybrid.js                 ← Testes modo híbrido
+│   ├── test-mcp-diagnostico.js        ← Diagnóstico MCP
+│   └── debug-sessions.js              ← Debug de sessões ativas
+│
+└── 📁 scripts/                        ← Scripts de inicialização
+    ├── README.md                       ← Documentação dos scripts de inicialização
+    ├── start.sh                        ← Produção (validações, 3 modos: --mcp, --http, híbrido)
+    └── start-server.sh                ← Desenvolvimento (rápido, porta 8825, logs em /tmp)
 ```
 
 ---
@@ -231,7 +285,7 @@
 ### Precisa de Ajuda?
 
 1. **Leia a documentação** acima primeiro
-2. **GitHub Issues:** [Abrir Issue](https://github.com/skillsit/veeam-backup-mcp/issues)
+2. **GitHub Issues:** [Abrir Issue](https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro/issues)
 3. **Email:** contato@skillsit.com.br
 
 ### FAQ

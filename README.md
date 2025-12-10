@@ -8,9 +8,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
-[![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-purple.svg)](https://modelcontextprotocol.io/)
-[![Tools](https://img.shields.io/badge/Tools-17-orange.svg)](#-ferramentas-disponíveis)
+[![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05%20HTTP%20Streamable-purple.svg)](https://modelcontextprotocol.io/)
+[![Tools](https://img.shields.io/badge/Tools-16-orange.svg)](#-ferramentas-disponíveis)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-success.svg)](#)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue.svg)](#)
+[![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-Compatible-green.svg)](#)
 
 <p align="center">
   <strong>Made with ❤️ by <a href="https://skillsit.com.br">Skills IT - Soluções em TI</a> - BRAZIL 🇧🇷</strong>
@@ -43,7 +45,7 @@
 
 ## 🎯 Visão Geral
 
-O **Veeam Backup & Replication MCP Server** é uma implementação híbrida do **Model Context Protocol (MCP)** que permite que assistentes de IA (Claude, ChatGPT, Gemini) interajam diretamente com sua infraestrutura de backup Veeam VBR através de linguagem natural.
+O **Veeam Backup & Replication MCP Server** é uma implementação completa do **Model Context Protocol (MCP) HTTP Streamable (2024-11-05)** que permite que assistentes de IA (Claude Code, Gemini CLI, Claude Desktop) interajam diretamente com sua infraestrutura de backup Veeam VBR através de linguagem natural, com autenticação Bearer Token e gerenciamento de sessões.
 
 ### O Que É MCP?
 
@@ -53,13 +55,41 @@ O **Veeam Backup & Replication MCP Server** é uma implementação híbrida do *
 
 Permite que você faça perguntas e execute ações no Veeam VBR usando linguagem natural:
 
+**Monitoramento e Consultas:**
 - ✅ "Mostre todos os jobs de backup que falharam hoje"
 - ✅ "Qual o status atual dos repositórios de backup?"
 - ✅ "Liste os últimos 5 backups do servidor SQL-PROD"
 - ✅ "Quantas licenças Veeam tenho disponíveis?"
 - ✅ "Me mostre informações detalhadas do job 'VM-Production-Backup'"
 
+**Controle e Troubleshooting:**
+- ✅ "Quais backups estão rodando agora?"
+- ✅ "Me mostre os restore points disponíveis para a VM 'SQL-SERVER-01'"
+- ✅ "Liste os jobs de backup copy configurados para compliance 3-2-1"
+- ✅ "Qual o próximo agendamento do job 'Daily-Full-Backup'?"
+- ✅ "Me mostre os logs detalhados da última sessão de backup do job 'Exchange-Backup'"
+
 Tudo isso sem sair do chat da IA!
+
+---
+
+> 💼 **Precisa de Ajuda com Veeam Backup ou IA?**
+>
+> A **Skills IT - Soluções em Tecnologia** é especialista em infraestrutura de TI e domina profundamente **Veeam Backup & Replication**. Nossa equipe possui expertise em **Inteligência Artificial** e **Model Context Protocol (MCP)**, oferecendo soluções completas para automação e integração de sistemas.
+>
+> **Nossos Serviços:**
+> - ✅ Consultoria e implementação Veeam Backup & Replication
+> - ✅ Desenvolvimento de MCPs customizados para sua infraestrutura
+> - ✅ Integração de IA com sistemas corporativos
+> - ✅ Automação de processos de backup e recuperação
+> - ✅ Treinamento e suporte especializado
+>
+> 📞 **WhatsApp/Telefone:** **(63) 3224-4925**
+> 🌐 **Website:** [skillsit.com.br](https://skillsit.com.br)
+> 📧 **Email:** contato@skillsit.com.br
+> 🇧🇷 **Localização:** Palmas - TO, Brasil
+>
+> *"Transformando infraestrutura em inteligência"*
 
 ---
 
@@ -117,25 +147,28 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 - **Modo Híbrido**: Execute ambos simultaneamente (recomendado)
 - **Zero Dependências Externas**: Sem necessidade de MCPO ou proxies
 
-### 🛠️ 17 Ferramentas Veeam Abrangentes
+### 🛠️ 16 Ferramentas Veeam Abrangentes
 
-| Categoria | Ferramenta | Descrição |
-|-----------|------------|-----------|
-| **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados |
-| **Jobs** | `get-backup-copy-jobs` | Lista Backup Copy jobs (3-2-1 compliance) |
-| **Jobs** | `get-job-details` | Informações detalhadas de job específico |
-| **Jobs** | `get-job-schedule` | Detalhes de scheduling de um job |
-| **Controle** | `start-backup-job` | Inicia job de backup sob demanda |
-| **Controle** | `stop-backup-job` | Para job de backup em execução |
-| **Sessões** | `get-backup-sessions` | Histórico de execuções de backup |
-| **Sessões** | `get-running-sessions` | Lista sessions em execução (real-time) |
-| **Sessões** | `get-failed-sessions` | Lista sessions que falharam (troubleshooting) |
-| **Sessões** | `get-session-log` | Logs detalhados de uma session |
-| **Restore** | `get-restore-points` | Lista restore points de uma VM |
-| **Infraestrutura** | `get-backup-proxies` | Status dos servidores proxy |
-| **Armazenamento** | `get-backup-repositories` | Informações de repositórios |
-| **Licenciamento** | `get-license-info` | Detalhes da licença Veeam |
-| **Servidor** | `get-server-info` | Informações do servidor VBR |
+| Categoria | Ferramenta | Descrição | Método | Destrutivo | Tipo |
+|-----------|------------|-----------|---------|------------|------|
+| **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados | GET | Não | Leitura |
+| **Jobs** | `get-backup-copy-jobs` | Lista Backup Copy jobs (3-2-1 compliance) | GET | Não | Leitura |
+| **Jobs** | `get-job-details` | Informações detalhadas de job específico | GET | Não | Leitura |
+| **Jobs** | `get-job-schedule` | Detalhes de scheduling de um job | GET | Não | Leitura |
+| **Sessões** | `get-backup-sessions` | Histórico de execuções de backup | GET | Não | Leitura |
+| **Sessões** | `get-running-sessions` | Lista TODAS as sessions em execução (backup jobs + system tasks) | GET | Não | Leitura |
+| **Sessões** | `get-running-backup-jobs` | Lista APENAS backup jobs em execução (exclui system tasks) | GET | Não | Leitura |
+| **Sessões** | `get-failed-sessions` | Lista sessions que falharam (troubleshooting) | GET | Não | Leitura |
+| **Sessões** | `get-session-log` | Logs detalhados de uma session | GET | Não | Leitura |
+| **Restore** | `get-restore-points` | Lista restore points de uma VM | GET | Não | Leitura |
+| **Infraestrutura** | `get-backup-proxies` | Status dos servidores proxy | GET | Não | Leitura |
+| **Armazenamento** | `get-backup-repositories` | Informações de repositórios | GET | Não | Leitura |
+| **Licenciamento** | `get-license-info` | Detalhes da licença Veeam | GET | Não | Leitura |
+| **Servidor** | `get-server-info` | Informações do servidor VBR | GET | Não | Leitura |
+| **Controle** | `start-backup-job` | Inicia job de backup sob demanda | POST | Sim | Escrita (Safety Guard) |
+| **Controle** | `stop-backup-job` | Para job de backup em execução | POST | Sim | Escrita (Safety Guard) |
+
+**Safety Guard:** Ferramentas de escrita requerem `confirmationToken` e `reason` para execução segura.
 
 ### 🔒 Autenticação Automática Inteligente
 
@@ -153,7 +186,9 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 
 ### 🔧 Operação Flexível
 
-- **3 Modos de Operação**: MCP-only, HTTP-only, Híbrido
+- **Protocolo MCP HTTP Streamable (2024-11-05)**: Compatível com Claude Code e Gemini CLI
+- **Autenticação Bearer Token**: Segurança integrada via header Authorization
+- **Session Management**: Gerenciamento de sessões com UUID e timeout de 15 minutos
 - **PM2 Ready**: Gerenciamento de processo em produção
 - **Docker Support**: Containerização completa com docker-compose
 - **Environment Variables**: Configuração via `.env`
@@ -194,7 +229,7 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │              17 Ferramentas Compartilhadas                  │ │
+│  │              18 Ferramentas Compartilhadas                  │ │
 │  │  Jobs | Control | Sessions | Restore | Infra | License     │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
@@ -234,8 +269,8 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 
 ```bash
 # Clone o repositório
-git clone https://github.com/skillsit/veeam-backup-mcp.git
-cd veeam-backup-mcp
+git clone https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro.git
+cd Skills-MCP-Veeam-Backup-Pro
 
 # Instale dependências
 npm install
@@ -252,8 +287,8 @@ npm start
 
 ```bash
 # Clone o repositório
-git clone https://github.com/skillsit/veeam-backup-mcp.git
-cd veeam-backup-mcp
+git clone https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro.git
+cd Skills-MCP-Veeam-Backup-Pro
 
 # Configure variáveis de ambiente
 cp env.example .env
@@ -299,6 +334,7 @@ Copie `env.example` para `.env` e configure:
 | `VEEAM_PASSWORD` | ✅ **Sim** | Senha do usuário Veeam | `SenhaSegura123!` |
 | `VEEAM_IGNORE_SSL` | ⚠️ Opcional | Ignorar erros SSL (padrão: true) | `true` |
 | `HTTP_PORT` | ⚠️ Opcional | Porta do servidor HTTP (padrão: 8825) | `8825` |
+| `AUTH_TOKEN` | ✅ **Sim** | Token de autenticação Bearer para MCP | `bf2571ca23445da...` |
 | `NODE_ENV` | ⚠️ Opcional | Ambiente de execução | `production` |
 
 ### Exemplo de Arquivo .env
@@ -323,6 +359,9 @@ VEEAM_IGNORE_SSL=true
 # Server Configuration
 HTTP_PORT=8825
 NODE_ENV=production
+
+# MCP HTTP Streamable Authentication
+AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
 ```
 
 ### Boas Práticas de Segurança
@@ -404,176 +443,826 @@ pm2 start vbr-mcp-server.js --name mcp-veeam-http -- --http --port=8825
 
 ## 🛠️ Ferramentas Disponíveis
 
+Descrições detalhadas das 16 ferramentas MCP com exemplos práticos, parâmetros e casos de uso reais.
+
+---
+
 ### 1. **get-backup-jobs** - Listar Jobs de Backup
 
-Lista todos os jobs de backup configurados no Veeam VBR.
+Lista todos os jobs de backup configurados no Veeam VBR com informações detalhadas sobre configuração, agendamento e última execução.
+
+**Descrição Completa:**
+Retorna lista completa de jobs de backup (ativos, desabilitados, em manutenção). Essencial para dashboards de monitoramento, validação de políticas de backup e auditoria de compliance.
+
+**Parâmetros:**
+- Nenhum (lista todos os jobs)
+
+**Retorno JSON:**
+- `id`: UUID do job (formato URN)
+- `name`: Nome descritivo do job
+- `type`: Tipo (Backup, BackupCopy, Replica)
+- `jobType`: Subtipo (Incremental, Full, Differential)
+- `isEnabled`: Se o job está habilitado
+- `scheduleEnabled`: Se agendamento está ativo
+- `nextRun`: Próxima execução (ISO 8601)
+- `lastResult`: Resultado (Success, Warning, Failed)
+- `lastRunTime`: Última execução (timestamp)
+- `targetRepository`: Repositório de destino
+
+**Casos de Uso:**
+1. Dashboard de monitoramento geral
+2. Auditoria de compliance (validar cobertura)
+3. Planejamento de janelas de manutenção
+4. Troubleshooting de jobs falhando
+5. Relatórios executivos de cobertura
 
 **Uso em Linguagem Natural:**
-- "Mostre todos os jobs de backup"
-- "Liste os jobs de backup configurados"
-- "Quais são os jobs de backup disponíveis?"
+- "Mostre todos os jobs de backup configurados"
+- "Liste jobs desabilitados"
+- "Quais jobs rodam hoje à noite?"
+- "Jobs que fazem backup do SQL-PROD"
+- "Jobs com status Failed na última execução"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/backup-jobs \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-backup-jobs","arguments":{}},
+    "id":1
+  }'
 ```
-
-**Retorno:**
-- Nome do job
-- Tipo de backup (incremental, full, etc.)
-- Próxima execução agendada
-- Estado atual (enabled/disabled)
 
 ---
 
-### 2. **get-backup-sessions** - Histórico de Execuções
+### 2. **get-backup-copy-jobs** - Jobs de Backup Copy (3-2-1 Compliance)
 
-Obtém histórico de execuções de jobs de backup (sessões).
+Lista jobs de Backup Copy configurados para compliance com regra 3-2-1 (3 cópias, 2 mídias diferentes, 1 offsite).
+
+**Descrição Completa:**
+Backup Copy jobs replicam backups existentes para repositório secundário. Crítico para disaster recovery e compliance regulatório.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- `id`: UUID do job
+- `name`: Nome do job copy
+- `source`: Job de origem
+- `targetRepository`: Repositório secundário
+- `scheduleType`: Tipo de agendamento
+- `retentionPolicy`: Política de retenção
+- `isEnabled`: Status ativo/inativo
+
+**Casos de Uso:**
+1. Validar compliance 3-2-1
+2. Verificar replicação offsite
+3. Auditoria SOX/HIPAA
+4. Planejamento de DR
+5. Otimização de custos de storage
 
 **Uso em Linguagem Natural:**
-- "Mostre os últimos backups executados"
-- "Quais backups falharam hoje?"
-- "Histórico de execuções do job 'VM-Production-Backup'"
+- "Liste jobs de backup copy"
+- "Quais backups estão sendo replicados offsite?"
+- "Jobs copy para compliance 3-2-1"
+- "Backup copy com falhas"
+- "Repositórios secundários em uso"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/backup-sessions \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{"jobName": "VM-Production-Backup"}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-backup-copy-jobs","arguments":{}},
+    "id":1
+  }'
 ```
-
-**Retorno:**
-- Status da sessão (Success, Warning, Failed)
-- Horário de início e fim
-- Duração total
-- Taxa de transferência
-- Quantidade de dados processados
 
 ---
 
-### 3. **get-job-details** - Detalhes Completos de Job
+### 3. **get-job-details** - Detalhes Completos de Job Específico
 
-Obtém informações detalhadas de um job específico incluindo últimas sessões.
+Obtém informações detalhadas de um job incluindo configuração, objetos protegidos, últimas sessões e agendamento.
 
-**Uso em Linguagem Natural:**
-- "Me mostre detalhes do job 'SQL-Backup-Daily'"
-- "Informações completas do backup 'VM-Production'"
-- "Status detalhado do job 'Exchange-Backup'"
+**Descrição Completa:**
+Fornece visão completa de um job específico. Útil para troubleshooting, análise de performance e validação de configuração.
 
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/job-details \
-  -H 'Content-Type: application/json' \
-  -d '{"jobName": "VM-Production-Backup"}'
-```
+**Parâmetros:**
+- `jobId`: UUID do job (obrigatório)
 
-**Retorno:**
+**Retorno JSON:**
 - Configuração completa do job
-- Últimas 5 sessões de execução
-- Objetos incluídos no job
-- Agendamento configurado
+- Últimas 10 sessões de execução
+- Lista de VMs/objetos protegidos
+- Configuração de agendamento
+- Repositório alvo
+- Política de retenção
+- Statistics (taxa de sucesso, duração média)
 
----
-
-### 4. **get-backup-proxies** - Status dos Proxies
-
-Lista servidores proxy Veeam e seus status de recursos.
+**Casos de Uso:**
+1. Troubleshooting de job específico
+2. Análise de performance
+3. Validação de objetos protegidos
+4. Auditoria de configuração
+5. Relatórios de SLA
 
 **Uso em Linguagem Natural:**
-- "Status dos servidores proxy"
-- "Quais proxies estão disponíveis?"
-- "Uso de CPU/memória dos proxies"
+- "Detalhes do job SQL-Backup-Daily"
+- "Configuração completa do VM-Production"
+- "Últimas execuções do Exchange-Backup"
+- "Quais VMs estão no job Prod-Servers?"
+- "Taxa de sucesso do job File-Server-Backup"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/backup-proxies \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-job-details","arguments":{"jobId":"urn:veeam:Job:..."}},
+    "id":1
+  }'
 ```
-
-**Retorno:**
-- Nome do servidor proxy
-- Status (online/offline)
-- Uso de CPU e memória
-- Tasks concorrentes
-- Capacidade máxima
 
 ---
 
-### 5. **get-backup-repositories** - Informações de Repositórios
+### 4. **get-job-schedule** - Agendamento de Job
 
-Obtém informações sobre repositórios de backup (armazenamento).
+Retorna detalhes do agendamento configurado para um job específico.
+
+**Descrição Completa:**
+Mostra quando e como um job está agendado para executar (diário, semanal, contínuo).
+
+**Parâmetros:**
+- `jobId`: UUID do job
+
+**Retorno JSON:**
+- `scheduleType`: Tipo (Daily, Weekly, Monthly, Continuous)
+- `startTime`: Hora de início
+- `daysOfWeek`: Dias da semana
+- `retrySettings`: Configuração de retry
+- `nextRun`: Próxima execução
+
+**Casos de Uso:**
+1. Planejamento de janelas de manutenção
+2. Otimização de horários
+3. Validação de SLA
+4. Resolução de conflitos de agenda
+5. Auditoria de compliance temporal
 
 **Uso em Linguagem Natural:**
-- "Quanto espaço livre tem nos repositórios?"
-- "Status dos repositórios de backup"
-- "Capacidade total dos repositórios"
+- "Quando roda o job SQL-Daily?"
+- "Agendamento do VM-Production"
+- "Próxima execução do Exchange-Backup"
+- "Jobs que rodam às 22h"
+- "Configuração de retry do FileServer-Backup"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/backup-repositories \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-job-schedule","arguments":{"jobId":"urn:veeam:Job:..."}},
+    "id":1
+  }'
 ```
-
-**Retorno:**
-- Nome do repositório
-- Tipo (SMB, NFS, dedup, etc.)
-- Capacidade total
-- Espaço livre/usado
-- Percentual de utilização
 
 ---
 
-### 6. **get-license-info** - Informações de Licença
+### 5. **get-backup-sessions** - Histórico de Execuções de Backup
 
-Obtém detalhes da licença Veeam instalada.
+Obtém histórico de sessões de backup (execuções passadas) com filtros por job, período ou status.
+
+**Descrição Completa:**
+Retorna lista de sessões executadas com status, duração, dados processados e resultado.
+
+**Parâmetros:**
+- `jobId`: Filtrar por job (opcional)
+- `limit`: Máximo de sessões (padrão: 100)
+- `stateFilter`: Filtrar por estado
+- `resultFilter`: Filtrar por resultado
+
+**Retorno JSON:**
+- `sessionId`: UUID da sessão
+- `jobName`: Nome do job
+- `state`: Estado (Working, Stopped, Failed)
+- `result`: Resultado (Success, Warning, Failed)
+- `startTime`: Início (ISO 8601)
+- `endTime`: Fim
+- `duration`: Duração total
+- `processedSize`: Dados processados (bytes)
+- `transferredSize`: Dados transferidos
+- `avgSpeed`: Velocidade média (MB/s)
+
+**Casos de Uso:**
+1. Troubleshooting de falhas
+2. Análise de performance histórica
+3. Relatórios de SLA
+4. Validação de janelas de backup
+5. Otimização de recursos
 
 **Uso em Linguagem Natural:**
-- "Informações da licença Veeam"
-- "Quantas licenças tenho disponíveis?"
-- "Validade da licença Veeam"
+- "Últimos 50 backups executados"
+- "Backups que falharam ontem"
+- "Histórico do VM-Production-Backup"
+- "Sessões com warnings esta semana"
+- "Backups mais lentos do mês"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/license-info \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-backup-sessions","arguments":{"limit":50}},
+    "id":1
+  }'
 ```
-
-**Retorno:**
-- Tipo de licença (Essentials, Enterprise, etc.)
-- Data de expiração
-- Quantidade de licenças
-- Licenças em uso
-- Status de suporte
 
 ---
 
-### 7. **get-server-info** - Informações do Servidor
+### 6. **get-running-sessions** - Sessões em Execução (Todas)
 
-Obtém informações sobre o servidor Veeam VBR.
+Lista TODAS as sessões atualmente em execução (backup jobs + system tasks).
+
+**Descrição Completa:**
+Mostra tudo que está rodando no Veeam VBR neste momento, incluindo backups, replicas, copy jobs e tarefas do sistema.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- `sessionId`: UUID
+- `jobName`: Nome do job
+- `state`: Estado (Working)
+- `progress`: Percentual (0-100)
+- `currentVm`: VM sendo processada
+- `startTime`: Início da sessão
+- `estimatedTimeLeft`: Tempo restante estimado
+- `processedObjects`: Objetos já processados
+- `totalObjects`: Total de objetos
+
+**Casos de Uso:**
+1. Monitoramento em tempo real
+2. Identificar jobs travados
+3. Validar progresso de backups
+4. Otimização de recursos
+5. Troubleshooting de lentidão
 
 **Uso em Linguagem Natural:**
-- "Informações do servidor Veeam"
-- "Versão do Veeam instalada"
-- "Detalhes do servidor VBR"
+- "O que está rodando agora?"
+- "Backups em execução"
+- "Progresso do job VM-Production"
+- "Jobs travados ou lentos"
+- "Qual VM está sendo processada no job SQL?"
 
 **Curl Example:**
 ```bash
-curl -X POST http://localhost:8825/server-info \
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-running-sessions","arguments":{}},
+    "id":1
+  }'
 ```
 
-**Retorno:**
-- Nome do servidor
-- Versão do Veeam VBR
-- Build number
-- Sistema operacional
-- Uptime
+---
+
+### 7. **get-running-backup-jobs** - Backup Jobs em Execução (Filtrado)
+
+Lista APENAS backup jobs em execução, EXCLUINDO system tasks e outros tipos de sessão.
+
+**Descrição Completa:**
+Versão filtrada de `get-running-sessions` mostrando apenas jobs de backup ativos. Ideal para dashboards focados.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- Mesmo formato de `get-running-sessions`
+- Apenas jobs do tipo Backup
+
+**Casos de Uso:**
+1. Dashboard específico de backups
+2. Alertas de jobs longos
+3. Validação de janela de backup
+4. Relatórios operacionais
+5. Automação condicional
+
+**Uso em Linguagem Natural:**
+- "Quais backups estão rodando?"
+- "Jobs de backup ativos agora"
+- "Backups em andamento"
+- "Jobs de backup há mais de 2 horas"
+- "Próximo backup a iniciar"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-running-backup-jobs","arguments":{}},
+    "id":1
+  }'
+```
+
+---
+
+### 8. **get-failed-sessions** - Sessões com Falha (Troubleshooting)
+
+Lista sessões que falharam nas últimas X horas. Crítico para troubleshooting e alertas.
+
+**Descrição Completa:**
+Ferramenta focada em falhas. Retorna apenas sessões Failed/Warning para análise rápida.
+
+**Parâmetros:**
+- `hours`: Janela temporal (padrão: 24h, máx: 168h)
+- `limit`: Máximo de resultados
+
+**Retorno JSON:**
+- Sessões com `result`: Failed ou Warning
+- `errorMessage`: Mensagem de erro
+- `failedVms`: VMs que falharam
+- `warningCount`: Quantidade de warnings
+- `errorCode`: Código do erro Veeam
+
+**Casos de Uso:**
+1. Troubleshooting matinal
+2. Alertas automáticos
+3. Análise de tendências de falha
+4. Priorização de correções
+5. Relatórios de incidentes
+
+**Uso em Linguagem Natural:**
+- "Backups que falharam hoje"
+- "Falhas nas últimas 48 horas"
+- "Jobs com warnings ontem"
+- "Qual erro no job SQL-Backup?"
+- "VMs que falharam no último backup"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-failed-sessions","arguments":{"hours":24}},
+    "id":1
+  }'
+```
+
+---
+
+### 9. **get-session-log** - Logs Detalhados de Sessão
+
+Retorna logs completos de uma sessão específica para troubleshooting profundo.
+
+**Descrição Completa:**
+Extrai logs linha a linha de uma sessão. Essencial para diagnóstico de erros complexos.
+
+**Parâmetros:**
+- `sessionId`: UUID da sessão (obrigatório)
+- `logLevel`: Filtro (All, Info, Warning, Error) - padrão: All
+
+**Retorno JSON:**
+- `logs`: Array de linhas de log
+- `timestamp`: Timestamp de cada linha
+- `level`: Nível (Info, Warning, Error)
+- `message`: Mensagem do log
+- `component`: Componente Veeam
+
+**Casos de Uso:**
+1. Diagnóstico de erros específicos
+2. Análise de performance granular
+3. Suporte técnico Veeam
+4. Auditoria detalhada
+5. Troubleshooting avançado
+
+**Uso em Linguagem Natural:**
+- "Logs da última sessão do SQL-Backup"
+- "Erros da sessão 123abc"
+- "Log completo do backup que falhou ontem"
+- "Warnings da sessão mais recente"
+- "O que causou o erro no backup do Exchange?"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-session-log","arguments":{"sessionId":"abc-123","logLevel":"Error"}},
+    "id":1
+  }'
+```
+
+---
+
+### 10. **get-restore-points** - Restore Points de VM
+
+Lista restore points disponíveis para uma VM específica. Essencial para planejamento de restore.
+
+**Descrição Completa:**
+Mostra todos os pontos de restauração de uma VM, incluindo data, tipo e repositório.
+
+**Parâmetros:**
+- `vmId`: ID da VM (opcional)
+- `vmName`: Nome da VM (opcional)
+- `limit`: Máximo de restore points
+
+**Retorno JSON:**
+- `vmName`: Nome da VM
+- `restorePoints`: Array de pontos
+- `creationTime`: Data de criação (ISO 8601)
+- `type`: Tipo (Full, Incremental, Differential)
+- `repository`: Repositório onde está
+- `isConsistent`: Se é application-consistent
+- `size`: Tamanho do restore point
+
+**Casos de Uso:**
+1. Planejamento de restore
+2. Validação de retenção
+3. Auditoria de compliance
+4. Troubleshooting de missing backups
+5. Relatórios de RPO
+
+**Uso em Linguagem Natural:**
+- "Restore points do SQL-SERVER-01"
+- "Backups disponíveis da VM Exchange"
+- "Pontos de restauração mais antigos"
+- "Restore points full da VM-PROD"
+- "Qual o último backup da VM-FILE-01?"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-restore-points","arguments":{"vmName":"SQL-SERVER-01"}},
+    "id":1
+  }'
+```
+
+---
+
+### 11. **get-backup-proxies** - Status dos Servidores Proxy
+
+Lista proxies de backup com status de saúde, carga atual e capacidade.
+
+**Descrição Completa:**
+Proxies processam dados de backup. Monitorar saúde é crítico para performance.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- `name`: Nome do proxy
+- `type`: Tipo (VMware, Hyper-V)
+- `status`: Status (Online, Offline, Maintenance)
+- `currentTasks`: Tarefas em execução
+- `maxTasks`: Capacidade máxima
+- `utilizationPercent`: % de utilização
+- `host`: Host onde está instalado
+
+**Casos de Uso:**
+1. Otimização de performance
+2. Balanceamento de carga
+3. Troubleshooting de lentidão
+4. Planejamento de capacidade
+5. Monitoramento de saúde
+
+**Uso em Linguagem Natural:**
+- "Status dos proxies de backup"
+- "Proxies sobrecarregados"
+- "Quantos proxies estão online?"
+- "Proxy com mais tarefas"
+- "Capacidade disponível nos proxies"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-backup-proxies","arguments":{}},
+    "id":1
+  }'
+```
+
+---
+
+### 12. **get-backup-repositories** - Informações de Repositórios de Backup
+
+Lista repositórios com capacidade, espaço livre e alertas de threshold.
+
+**Descrição Completa:**
+Repositórios armazenam backups. Monitorar espaço é crítico para evitar falhas.
+
+**Parâmetros:**
+- `threshold`: % de alerta (padrão: 20%)
+
+**Retorno JSON:**
+- `name`: Nome do repositório
+- `type`: Tipo (Windows, Linux, S3, etc.)
+- `path`: Caminho do storage
+- `capacity`: Capacidade total (bytes)
+- `freeSpace`: Espaço livre (bytes)
+- `freePercent`: % livre
+- `status`: Status (OK, Warning, Critical)
+- `isRotatedDrive`: Se é rotated drive
+
+**Casos de Uso:**
+1. Alertas de espaço em disco
+2. Planejamento de expansão
+3. Otimização de retenção
+4. Troubleshooting de falhas
+5. Relatórios de capacidade
+
+**Uso em Linguagem Natural:**
+- "Espaço livre nos repositórios"
+- "Repositórios com menos de 10% livre"
+- "Capacidade total de storage"
+- "Repositório mais cheio"
+- "Alertas de espaço em disco"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-backup-repositories","arguments":{"threshold":20}},
+    "id":1
+  }'
+```
+
+---
+
+### 13. **get-license-info** - Informações de Licença Veeam
+
+Retorna detalhes da licença Veeam: tipo, validade, capacidade e uso.
+
+**Descrição Completa:**
+Monitora licenciamento para evitar expiração e overuse. Crítico para compliance.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- `licenseType`: Tipo (Evaluation, Rental, Perpetual)
+- `edition`: Edição (Community, Standard, Enterprise, Enterprise Plus)
+- `expirationDate`: Data de expiração
+- `status`: Status (Valid, Expired, Grace Period)
+- `licensedInstances`: Instâncias licenciadas
+- `usedInstances`: Instâncias em uso
+- `supportExpirationDate`: Fim do suporte
+
+**Casos de Uso:**
+1. Alertas de expiração
+2. Planejamento de renovação
+3. Auditoria de compliance
+4. Validação de capacidade
+5. Relatórios executivos
+
+**Uso em Linguagem Natural:**
+- "Status da licença Veeam"
+- "Quando expira minha licença?"
+- "Quantas instâncias estou usando?"
+- "Tenho licenças disponíveis?"
+- "Edição da licença Veeam"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-license-info","arguments":{}},
+    "id":1
+  }'
+```
+
+---
+
+### 14. **get-server-info** - Informações do Servidor Veeam VBR
+
+Retorna informações do servidor Veeam: versão, hostname, uptime e configuração.
+
+**Descrição Completa:**
+Visão geral do servidor Veeam. Útil para troubleshooting e auditoria.
+
+**Parâmetros:**
+- Nenhum
+
+**Retorno JSON:**
+- `serverName`: Nome do servidor
+- `version`: Versão Veeam (ex: 12.1.2.172)
+- `build`: Build number
+- `installDate`: Data de instalação
+- `databaseType`: Tipo de DB (SQL Server)
+- `databaseSize`: Tamanho do DB
+- `cloudConnectEnabled`: Cloud Connect ativo
+- `backupServerRole`: Papel do servidor
+
+**Casos de Uso:**
+1. Validação de versão
+2. Planejamento de upgrade
+3. Troubleshooting de compatibilidade
+4. Auditoria de infraestrutura
+5. Documentação técnica
+
+**Uso em Linguagem Natural:**
+- "Versão do Veeam VBR"
+- "Informações do servidor de backup"
+- "Quando foi instalado o Veeam?"
+- "Tamanho do banco de dados Veeam"
+- "Cloud Connect está habilitado?"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{"name":"get-server-info","arguments":{}},
+    "id":1
+  }'
+```
+
+---
+
+### 15. **start-backup-job** - Iniciar Job de Backup Sob Demanda 🔐 SAFETY GUARD
+
+Inicia execução manual de job de backup. **OPERAÇÃO CRÍTICA** protegida por Safety Guard.
+
+**Descrição Completa:**
+Dispara backup fora do agendamento. Requer confirmação explícita devido ao impacto em recursos.
+
+**⚠️ SAFETY GUARD ATIVO:**
+Esta ferramenta requer:
+- `confirmationToken`: Token único de confirmação
+- `reason`: Justificativa com mínimo 10 caracteres
+
+**Parâmetros:**
+- `jobId`: UUID do job (obrigatório)
+- `fullBackup`: Forçar full (padrão: false)
+- `reason`: Justificativa (obrigatório)
+- `confirmationToken`: Token MCP_SAFETY_TOKEN
+
+**Retorno JSON:**
+- `sessionId`: UUID da sessão iniciada
+- `jobName`: Nome do job
+- `startTime`: Hora de início
+- `estimatedDuration`: Duração estimada
+
+**Casos de Uso:**
+1. Backup emergencial antes de manutenção
+2. Teste de job recém-configurado
+3. Backup extra após mudanças críticas
+4. Recovery de janela perdida
+5. Validação de troubleshooting
+
+**Uso em Linguagem Natural:**
+- "Inicie backup do SQL-Daily agora"
+- "Execute job VM-Production imediatamente"
+- "Backup full do Exchange-Backup agora"
+- "Dispare backup do FileServer sob demanda"
+- "Inicie backup de emergência"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{
+      "name":"start-backup-job",
+      "arguments":{
+        "jobId":"urn:veeam:Job:...",
+        "fullBackup":false,
+        "reason":"Backup emergencial antes de upgrade do SQL Server",
+        "confirmationToken":"seu-token-aqui"
+      }
+    },
+    "id":1
+  }'
+```
+
+---
+
+### 16. **stop-backup-job** - Parar Job de Backup em Execução 🔐 SAFETY GUARD
+
+Para job de backup em execução. **OPERAÇÃO DESTRUTIVA** protegida por Safety Guard.
+
+**Descrição Completa:**
+Interrompe backup em andamento. Pode causar restore points incompletos. Usar com cautela extrema.
+
+**⚠️ SAFETY GUARD ATIVO:**
+Esta ferramenta requer:
+- `confirmationToken`: Token único de confirmação
+- `reason`: Justificativa DETALHADA (mínimo 10 caracteres)
+
+**⚠️ AVISO:**
+Parar backup pode resultar em:
+- Restore point incompleto/corrompido
+- Reprocessamento na próxima execução
+- Impacto no RPO
+
+**Parâmetros:**
+- `jobId`: UUID do job (obrigatório)
+- `reason`: Justificativa detalhada (obrigatório)
+- `confirmationToken`: Token MCP_SAFETY_TOKEN
+
+**Retorno JSON:**
+- `sessionId`: UUID da sessão parada
+- `jobName`: Nome do job
+- `stopTime`: Hora de parada
+- `processedObjects`: Objetos já processados
+- `status`: Status final
+
+**Casos de Uso:**
+1. Job travado por mais de X horas
+2. Impacto em produção (lentidão)
+3. Manutenção emergencial
+4. Job iniciado por engano
+5. Troubleshooting de problemas
+
+**Uso em Linguagem Natural:**
+- "Pare o job SQL-Backup agora"
+- "Interrompa backup do VM-Production"
+- "Cancele execução do Exchange-Backup"
+- "Pare backup travado há 10 horas"
+- "Stop do job FileServer por manutenção"
+
+**Curl Example:**
+```bash
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "method":"tools/call",
+    "params":{
+      "name":"stop-backup-job",
+      "arguments":{
+        "jobId":"urn:veeam:Job:...",
+        "reason":"Job travado há 12 horas causando lentidão no storage",
+        "confirmationToken":"seu-token-aqui"
+      }
+    },
+    "id":1
+  }'
+```
+
+---
+
+## 🔐 Nota sobre Safety Guard
+
+As ferramentas **start-backup-job** e **stop-backup-job** são protegidas por **Safety Guard** devido ao impacto potencial:
+
+- **Requerem confirmação explícita** via token
+- **Justificativa obrigatória** com mínimo 10 caracteres
+- **Logs de auditoria** registram quem executou e por quê
+- **Podem ser desabilitados** via `MCP_SAFETY_GUARD=false` no `.env` (NÃO recomendado em produção)
+
+**Como obter o token:**
+O token está configurado no `.env` do servidor MCP como `MCP_SAFETY_TOKEN`.
 
 ---
 
@@ -608,7 +1297,7 @@ Adicione ao arquivo de configuração:
 
 ---
 
-### Claude Code (Modo HTTP Streamable)
+### Claude Code (Modo HTTP Streamable) ⭐
 
 Adicione ao `.mcp.json` no workspace ou `~/.claude/settings.json`:
 
@@ -619,18 +1308,28 @@ Adicione ao `.mcp.json` no workspace ou `~/.claude/settings.json`:
       "type": "streamable-http",
       "url": "http://localhost:8825/mcp",
       "headers": {
-        "Content-Type": "application/json"
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
       }
     }
   }
 }
 ```
 
-**Nota:** Para modo HTTP, o servidor deve estar rodando com `--http` ou modo híbrido (padrão).
+**Recursos:**
+- ✅ Protocolo MCP 2024-11-05 (JSON-RPC 2.0)
+- ✅ Autenticação Bearer Token obrigatória
+- ✅ Session management com UUID
+- ✅ 15 ferramentas disponíveis
+
+**Endpoints Implementados:**
+- `POST /mcp` - Handler JSON-RPC principal (initialize, tools/list, tools/call)
+- `GET /mcp` - Server-Sent Events para notificações
+- `DELETE /mcp` - Terminação de sessão graceful
+- `GET /health` - Health check com info de autenticação
 
 ---
 
-### Gemini CLI (Modo HTTP)
+### Gemini CLI (Modo HTTP) ⭐
 
 Adicione ao `~/.gemini/settings.json`:
 
@@ -640,13 +1339,18 @@ Adicione ao `~/.gemini/settings.json`:
     "veeam-backup": {
       "httpUrl": "http://localhost:8825/mcp",
       "headers": {
-        "Content-Type": "application/json"
+        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
       },
       "timeout": 30000
     }
   }
 }
 ```
+
+**Diferenças de Configuração:**
+- **Claude Code:** Usa propriedade `url`
+- **Gemini CLI:** Usa propriedade `httpUrl`
+- **Ambos:** Requerem header `Authorization: Bearer TOKEN`
 
 ---
 
@@ -942,7 +1646,7 @@ Este projeto está licenciado sob a **Licença MIT** - veja o arquivo [LICENSE](
 
 ### Precisa de Ajuda?
 
-1. **GitHub Issues:** [Abrir Issue](https://github.com/skillsit/veeam-backup-mcp/issues)
+1. **GitHub Issues:** [Abrir Issue](https://github.com/DevSkillsIT/Skills-MCP-Veeam-Backup-Pro/issues)
 2. **Email:** contato@skillsit.com.br
 3. **Documentação Adicional:**
    - [ARCHITECTURE_AND_DESIGN.md](ARCHITECTURE_AND_DESIGN.md) - Detalhes técnicos de arquitetura
