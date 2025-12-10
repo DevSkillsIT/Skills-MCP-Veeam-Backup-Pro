@@ -84,10 +84,8 @@ Tudo isso sem sair do chat da IA!
 > - ✅ Automação de processos de backup e recuperação
 > - ✅ Treinamento e suporte especializado
 >
-> 📞 **WhatsApp/Telefone:** **(63) 3224-4925**
-> 🌐 **Website:** [skillsit.com.br](https://skillsit.com.br)
-> 📧 **Email:** contato@skillsit.com.br
-> 🇧🇷 **Localização:** Palmas - TO, Brasil
+> 📞 **WhatsApp/Telefone:** (63) 3224-4925 - Brasil
+> 🌐 **Website:** skillsit.com.br 📧 **Email:** contato@skillsit.com.br
 >
 > *"Transformando infraestrutura em inteligência"*
 
