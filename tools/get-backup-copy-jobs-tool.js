@@ -8,6 +8,7 @@ import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { enrichJobData, formatJobType } from "../lib/format-helpers.js";
 import { enrichListResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
+import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
 
 // HTTPS agent com suporte a certificados self-signed
 const httpsAgent = new https.Agent({
@@ -18,7 +19,28 @@ export default function(server) {
   server.tool(
     "get-backup-copy-jobs",
     {
-      limit: z.number().min(1).max(1000).default(100).describe("Máximo de jobs a retornar (padrão: 100)")
+      limit: z.number().min(1).max(1000).default(100).describe("Máximo de jobs a retornar (padrão: 100)"),
+      // ════════════════════════════════════════════════════════════════════
+      // CAMPO DESCRIPTION FILTER: BUSCA POR INFORMAÇÕES DO CLIENTE (MSP)
+      // ════════════════════════════════════════════════════════════════════
+      // Skills IT gerencia Backup Copy jobs para MÚLTIPLOS CLIENTES (operações MSP).
+      // O filtro descriptionFilter permite buscar jobs por:
+      // - Nome do cliente (ex: "ACME", "TechCo")
+      // - ID do cliente (ex: "CLI-001", "CLI-015")
+      // - Localização (ex: "Curitiba", "São Paulo")
+      // - Tipo de contrato (ex: "Premium", "Enterprise")
+      //
+      // Formato esperado no campo description:
+      // "Cliente: {nome} | ID: {id} | Local: {local} | Contrato: {tipo}"
+      //
+      // Exemplo de uso:
+      // - descriptionFilter: "ACME" → Retorna copy jobs do cliente ACME
+      // - descriptionFilter: "Curitiba" → Retorna copy jobs em Curitiba
+      // - descriptionFilter: "CLI-001" → Retorna copy jobs do cliente CLI-001
+      //
+      // NOTA: Filtro é aplicado APÓS busca na API (VBR API não suporta filtro nativo por description)
+      // CRÍTICO PARA DR: Backup Copy jobs são essenciais para 3-2-1 rule e disaster recovery
+      descriptionFilter: z.string().optional().describe("Filter jobs by client information in description field (name, ID, location, contract)")
     },
     async (params) => {
       const startTime = Date.now();
@@ -26,7 +48,7 @@ export default function(server) {
       try {
         // Autenticação automática via middleware
         const { host, port, token, apiVersion } = await ensureAuthenticated();
-        const { limit = 100 } = params;
+        const { limit = 100, descriptionFilter } = params;
 
         // Endpoint: GET /api/v1/jobs com filtro typeFilter=BackupCopy
         const queryParams = new URLSearchParams({
@@ -57,6 +79,26 @@ export default function(server) {
 
         const jobsData = await response.json();
         console.log(`[get-backup-copy-jobs] Recebido: ${jobsData.data?.length || 0} jobs`);
+
+        // ════════════════════════════════════════════════════════════════════
+        // APLICAR FILTRO POR DESCRIPTION (pós-fetch, API VBR não suporta nativo)
+        // ════════════════════════════════════════════════════════════════════
+        // Se descriptionFilter foi fornecido, filtrar Backup Copy jobs por conteúdo do campo description.
+        // Busca case-insensitive em: clientName, clientId, location, contractType, raw description.
+        // CRÍTICO PARA DR: Backup Copy jobs são essenciais para estratégia 3-2-1 e disaster recovery.
+        let filteredJobs = jobsData.data || [];
+
+        if (descriptionFilter && filteredJobs.length > 0) {
+          const beforeCount = filteredJobs.length;
+          filteredJobs = searchByDescription(filteredJobs, descriptionFilter);
+          const afterCount = filteredJobs.length;
+
+          console.log(`[get-backup-copy-jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
+          console.log(`[get-backup-copy-jobs] 📊 Results: ${afterCount} copy jobs match (from ${beforeCount} total)`);
+
+          // Atualizar jobsData.data com jobs filtrados
+          jobsData.data = filteredJobs;
+        }
 
         // Verificar se há Backup Copy jobs
         if (!jobsData.data || jobsData.data.length === 0) {
@@ -101,7 +143,7 @@ export default function(server) {
           const enrichedResponse = enrichListResponse(
             [],
             "get-backup-copy-jobs",
-            { typeFilter: "BackupCopy" },
+            { typeFilter: "BackupCopy", descriptionFilter },
             { limit, skip: 0, total: 0 }
           );
 
@@ -181,7 +223,7 @@ export default function(server) {
         const enrichedResponse = enrichListResponse(
           responseData.jobs,
           "get-backup-copy-jobs",
-          { typeFilter: "BackupCopy" },
+          { typeFilter: "BackupCopy", descriptionFilter },
           jobsData.pagination
         );
 

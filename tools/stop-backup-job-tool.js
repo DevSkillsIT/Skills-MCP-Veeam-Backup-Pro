@@ -11,6 +11,7 @@ import { validateJobOperation, validateVeeamId } from "../lib/validation-helpers
 import { logOperation } from "../lib/audit-logger.js";
 import { enrichOperationResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
 import { safetyGuard } from "../lib/safety-guard.js";
+import { formatDescriptionForAI, getDescriptionFallback } from "../lib/description-helpers.js";
 
 // HTTPS agent com suporte a certificados self-signed
 const httpsAgent = new https.Agent({
@@ -130,7 +131,24 @@ export default function(server) {
             jobId: job.id,
             jobName: job.name,
             jobType: job.type,
-            platformName: job.platformName
+            platformName: job.platformName,
+            // ════════════════════════════════════════════════════════════════════
+            // CAMPO DESCRIPTION: CRÍTICO PARA OPERAÇÕES MSP MULTI-CLIENT
+            // ════════════════════════════════════════════════════════════════════
+            // Skills IT gerencia backups para MÚLTIPLOS CLIENTES (Ramada, Grupo Wink, etc).
+            // O campo description contém metadados do cliente:
+            // - Nome do cliente
+            // - ID do cliente
+            // - Localização
+            // - Tipo de contrato
+            //
+            // Formato esperado: "Cliente: {nome} | ID: {id} | Local: {local} | Contrato: {tipo}"
+            // Exemplo: "Cliente: Ramada Hotéis | ID: CLI-001 | Local: Curitiba | Contrato: Premium"
+            //
+            // Isso permite que AIs identifiquem jobs por informações do cliente,
+            // ao invés de apenas por nomes técnicos como "BKP-JOB-LOCAL-OK-PMW-VCENTER-SERVER-SKILLS"
+            description: job.description || getDescriptionFallback(job),
+            descriptionFormatted: formatDescriptionForAI(job.description)
           }
         );
 
@@ -142,7 +160,10 @@ export default function(server) {
             jobId: job.id,
             jobName: job.name,
             jobType: job.type,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            // Campo description para identificação do cliente (operações MSP)
+            description: job.description || getDescriptionFallback(job),
+            descriptionFormatted: formatDescriptionForAI(job.description)
           },
           nextSteps: {
             checkFinalState: `Use get-job-details com jobId: ${job.id} para verificar estado final`,

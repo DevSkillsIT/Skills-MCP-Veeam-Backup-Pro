@@ -3,6 +3,7 @@ import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
 
 // Create an HTTPS agent that ignores self-signed certificates
 const httpsAgent = new https.Agent({
@@ -18,18 +19,39 @@ export default function(server) {
       skip: z.number().min(0).default(0).describe("Number of jobs to skip (for pagination)"),
       typeFilter: z.string().default("Backup").describe("Job type filter (e.g., Backup, Replica, BackupCopy)"),
       stateFilter: z.string().optional().describe("Job state filter (e.g., Running, Stopped, Disabled)"),
-      nameFilter: z.string().optional().describe("Job name pattern filter (use * for wildcards)")
+      nameFilter: z.string().optional().describe("Job name pattern filter (use * for wildcards)"),
+      // ════════════════════════════════════════════════════════════════════
+      // CAMPO DESCRIPTION FILTER: BUSCA POR INFORMAÇÕES DO CLIENTE (MSP)
+      // ════════════════════════════════════════════════════════════════════
+      // Skills IT gerencia backups para MÚLTIPLOS CLIENTES (Ramada, Grupo Wink, etc).
+      // O filtro descriptionFilter permite buscar jobs por:
+      // - Nome do cliente (ex: "Ramada", "Grupo Wink")
+      // - ID do cliente (ex: "CLI-001", "CLI-015")
+      // - Localização (ex: "Curitiba", "São Paulo")
+      // - Tipo de contrato (ex: "Premium", "Enterprise")
+      //
+      // Formato esperado no campo description:
+      // "Cliente: {nome} | ID: {id} | Local: {local} | Contrato: {tipo}"
+      //
+      // Exemplo de uso:
+      // - descriptionFilter: "Ramada" → Retorna jobs do cliente Ramada
+      // - descriptionFilter: "Curitiba" → Retorna jobs em Curitiba
+      // - descriptionFilter: "CLI-001" → Retorna jobs do cliente CLI-001
+      //
+      // NOTA: Filtro é aplicado APÓS busca na API (VBR API não suporta filtro nativo por description)
+      descriptionFilter: z.string().optional().describe("Filter jobs by client information in description field (name, ID, location, contract)")
     },
     async (params) => {
       try {
         // Autenticação automática via middleware
         const { host, port, token, apiVersion } = await ensureAuthenticated();
-        const { 
-          limit = 100, 
-          skip = 0, 
+        const {
+          limit = 100,
+          skip = 0,
           typeFilter = "Backup",
           stateFilter,
-          nameFilter
+          nameFilter,
+          descriptionFilter
         } = params;
         
         // Build query parameters for JOBS API (not sessions!)
@@ -67,7 +89,26 @@ export default function(server) {
         
         const jobsData = await response.json();
         console.log(`Received jobs data:`, JSON.stringify(jobsData, null, 2));
-        
+
+        // ════════════════════════════════════════════════════════════════════
+        // APLICAR FILTRO POR DESCRIPTION (pós-fetch, API VBR não suporta nativo)
+        // ════════════════════════════════════════════════════════════════════
+        // Se descriptionFilter foi fornecido, filtrar jobs por conteúdo do campo description.
+        // Busca case-insensitive em: clientName, clientId, location, contractType, raw description.
+        let filteredJobs = jobsData.data || [];
+
+        if (descriptionFilter && filteredJobs.length > 0) {
+          const beforeCount = filteredJobs.length;
+          filteredJobs = searchByDescription(filteredJobs, descriptionFilter);
+          const afterCount = filteredJobs.length;
+
+          console.log(`[get-backup-jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
+          console.log(`[get-backup-jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
+
+          // Atualizar jobsData.data com jobs filtrados
+          jobsData.data = filteredJobs;
+        }
+
         // Check if we have any jobs
         if (!jobsData.data || jobsData.data.length === 0) {
           return {
@@ -116,7 +157,8 @@ export default function(server) {
           filters: {
             typeFilter,
             stateFilter,
-            nameFilter
+            nameFilter,
+            descriptionFilter
           }
         };
         
