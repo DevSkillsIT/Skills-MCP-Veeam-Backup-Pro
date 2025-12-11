@@ -8,6 +8,7 @@ import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { formatDateTime, formatBytes } from "../lib/format-helpers.js";
 import { enrichListResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
+import { searchByName } from "../lib/description-helpers.js";
 
 // HTTPS agent com suporte a certificados self-signed
 const httpsAgent = new https.Agent({
@@ -18,7 +19,7 @@ export default function(server) {
   server.tool(
     "get-restore-points",
     {
-      vmName: z.string().optional().describe("Nome da VM (usar OU vmId)"),
+      vmName: z.string().optional().describe("Nome da VM com busca semântica (parcial, sem acentos) - usar OU vmId"),
       vmId: z.string().optional().describe("ID da VM (usar OU vmName)"),
       limit: z.number().min(1).max(1000).default(100).describe("Máximo de restore points a retornar (padrão: 100)")
     },
@@ -211,28 +212,98 @@ export default function(server) {
 }
 
 /**
- * Busca VM ID pelo nome usando query API
+ * Busca VM ID pelo nome usando BUSCA SEMÂNTICA
+ *
+ * Estratégia:
+ * 1. Busca TODOS os restore points (sem filtro)
+ * 2. Agrupa restore points por VM (vmId único)
+ * 3. Aplica searchByName() para encontrar VM correspondente
+ * 4. Retorna vmId da VM encontrada
  */
 async function findVmIdByName(vmName, host, port, token, apiVersion) {
-  // Tentar buscar via query API (endpoint de pesquisa)
-  // Nota: Endpoint exato pode variar entre versões do VBR
-  // Fallback: retornar erro informativo se não encontrar
+  console.log(`[findVmIdByName] 🔍 Buscando VM com busca semântica: "${vmName}"`);
 
-  console.log(`[get-restore-points] Buscando VM por nome não implementado ainda.`);
-  console.log(`[get-restore-points] Use vmId ao invés de vmName para esta versão.`);
+  // 1. Buscar TODOS os restore points (sem filtro de vmId)
+  const queryParams = new URLSearchParams({
+    limit: '1000', // Limite alto para capturar o máximo de VMs
+    skip: '0'
+  });
 
-  throw new Error(
-    `Busca por vmName não está implementada nesta versão.\n\n` +
-    `Alternativas:\n` +
-    `1. Use o parâmetro vmId ao invés de vmName\n` +
-    `2. Consulte VBR console para obter o UUID da VM\n` +
-    `3. Use PowerShell: Get-VBRBackup | Get-VBRRestorePoint | Where {$_.VmName -eq "${vmName}"}\n\n` +
-    `Em breve será adicionado suporte para busca por nome.`
-  );
+  const apiUrl = `https://${host}:${port}/api/v1/vmRestorePoints?${queryParams.toString()}`;
+  console.log(`[findVmIdByName] GET ${apiUrl}`);
 
-  // Implementação futura:
-  // const searchUrl = `https://${host}:${port}/api/v1/query?type=VirtualMachine&filter=name==${vmName}`;
-  // ... implementar busca e retornar vmId
+  const response = await fetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      'accept': 'application/json',
+      'x-api-version': apiVersion,
+      'Authorization': `Bearer ${token}`
+    },
+    agent: httpsAgent
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Falha ao buscar VMs (HTTP ${response.status}): ${errorText}`
+    );
+  }
+
+  const allPoints = await response.json();
+  console.log(`[findVmIdByName] Recebido: ${allPoints.data?.length || 0} restore points`);
+
+  if (!allPoints.data || allPoints.data.length === 0) {
+    throw new Error(
+      `Nenhum restore point encontrado no servidor.\n\n` +
+      `Isso pode significar:\n` +
+      `1. Nenhuma VM possui backups no momento\n` +
+      `2. Todos os restore points expiraram\n` +
+      `3. Você não tem permissão para ver restore points\n\n` +
+      `Use get-backup-jobs para verificar jobs configurados.`
+    );
+  }
+
+  // 2. Agrupar por VM (remover duplicatas por vmId)
+  const vmMap = new Map();
+  allPoints.data.forEach(point => {
+    if (!vmMap.has(point.vmId)) {
+      vmMap.set(point.vmId, {
+        vmId: point.vmId,
+        vmName: point.vmName,
+        platformName: point.platformName
+      });
+    }
+  });
+
+  const uniqueVMs = Array.from(vmMap.values());
+  console.log(`[findVmIdByName] VMs únicas encontradas: ${uniqueVMs.length}`);
+
+  // 3. Aplicar busca semântica
+  const matchedVMs = searchByName(uniqueVMs, vmName, 'vmName');
+
+  if (matchedVMs.length === 0) {
+    // Mostrar VMs disponíveis para ajudar o usuário
+    const availableVMs = uniqueVMs.slice(0, 10).map(vm => vm.vmName).join(', ');
+    throw new Error(
+      `❌ Nenhuma VM encontrada com nome semelhante a "${vmName}".\n\n` +
+      `VMs disponíveis (primeiras 10):\n${availableVMs}\n\n` +
+      `Dicas:\n` +
+      `- Tente buscar por parte do nome (ex: "servidor" ao invés de "servidor-producao-01")\n` +
+      `- A busca ignora acentos e é case-insensitive\n` +
+      `- Use get-backup-jobs para ver quais VMs estão sendo backupeadas`
+    );
+  }
+
+  // Retornar vmId da primeira VM encontrada (mais relevante)
+  const foundVM = matchedVMs[0];
+  console.log(`[findVmIdByName] ✅ VM encontrada: "${foundVM.vmName}" (ID: ${foundVM.vmId})`);
+
+  if (matchedVMs.length > 1) {
+    console.log(`[findVmIdByName] ⚠️ Múltiplas VMs encontradas (${matchedVMs.length}). Usando a mais relevante.`);
+    console.log(`[findVmIdByName] Outras VMs encontradas:`, matchedVMs.slice(1, 5).map(vm => vm.vmName).join(', '));
+  }
+
+  return foundVM.vmId;
 }
 
 /**

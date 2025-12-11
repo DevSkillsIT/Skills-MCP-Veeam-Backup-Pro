@@ -3,7 +3,7 @@ import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
-import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
+import { searchByDescription, searchByName, formatDescriptionForAI } from "../lib/description-helpers.js";
 
 // Create an HTTPS agent that ignores self-signed certificates
 const httpsAgent = new https.Agent({
@@ -19,7 +19,7 @@ export default function(server) {
       skip: z.number().min(0).default(0).describe("Number of jobs to skip (for pagination)"),
       typeFilter: z.string().default("Backup").describe("Job type filter (e.g., Backup, Replica, BackupCopy)"),
       stateFilter: z.string().optional().describe("Job state filter (e.g., Running, Stopped, Disabled)"),
-      nameFilter: z.string().optional().describe("Job name pattern filter (use * for wildcards)"),
+      nameFilter: z.string().optional().describe("Job name semantic search filter (searches by partial words, accent-insensitive)"),
       // ════════════════════════════════════════════════════════════════════
       // CAMPO DESCRIPTION FILTER: BUSCA POR INFORMAÇÕES DO CLIENTE (MSP)
       // ════════════════════════════════════════════════════════════════════
@@ -64,10 +64,8 @@ export default function(server) {
         if (stateFilter) {
           queryParams.append('stateFilter', stateFilter);
         }
-        
-        if (nameFilter) {
-          queryParams.append('nameFilter', nameFilter);
-        }
+
+        // NOTA: nameFilter NÃO é enviado para API - aplicado pós-fetch com busca semântica
         
         const apiUrl = `https://${host}:${port}/api/v1/jobs?${queryParams.toString()}`;
         console.log(`Fetching backup jobs from: ${apiUrl}`);
@@ -103,6 +101,23 @@ export default function(server) {
           const afterCount = filteredJobs.length;
 
           console.log(`[get-backup-jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
+          console.log(`[get-backup-jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
+
+          // Atualizar jobsData.data com jobs filtrados
+          jobsData.data = filteredJobs;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // APLICAR FILTRO POR NAME (pós-fetch, busca semântica)
+        // ════════════════════════════════════════════════════════════════════
+        // Se nameFilter foi fornecido, filtrar jobs por nome com busca semântica.
+        // Busca tokenizada com normalização de acentos e matching parcial.
+        if (nameFilter && filteredJobs.length > 0) {
+          const beforeCount = filteredJobs.length;
+          filteredJobs = searchByName(filteredJobs, nameFilter, 'name');
+          const afterCount = filteredJobs.length;
+
+          console.log(`[get-backup-jobs] ✅ Applied nameFilter: "${nameFilter}"`);
           console.log(`[get-backup-jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
 
           // Atualizar jobsData.data com jobs filtrados

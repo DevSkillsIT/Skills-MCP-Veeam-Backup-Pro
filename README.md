@@ -149,7 +149,7 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 
 | Categoria | Ferramenta | Descrição | Método | Destrutivo | Tipo |
 |-----------|------------|-----------|---------|------------|------|
-| **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados | GET | Não | Leitura |
+| **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados (busca semântica) | GET | Não | Leitura |
 | **Jobs** | `get-backup-copy-jobs` | Lista Backup Copy jobs (3-2-1 compliance) | GET | Não | Leitura |
 | **Jobs** | `get-job-details` | Informações detalhadas de job específico | GET | Não | Leitura |
 | **Jobs** | `get-job-schedule` | Detalhes de scheduling de um job | GET | Não | Leitura |
@@ -158,7 +158,7 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 | **Sessões** | `get-running-backup-jobs` | Lista APENAS backup jobs em execução (exclui system tasks) | GET | Não | Leitura |
 | **Sessões** | `get-failed-sessions` | Lista sessions que falharam (troubleshooting) | GET | Não | Leitura |
 | **Sessões** | `get-session-log` | Logs detalhados de uma session | GET | Não | Leitura |
-| **Restore** | `get-restore-points` | Lista restore points de uma VM | GET | Não | Leitura |
+| **Restore** | `get-restore-points` | Lista restore points de uma VM (busca semântica) | GET | Não | Leitura |
 | **Infraestrutura** | `get-backup-proxies` | Status dos servidores proxy | GET | Não | Leitura |
 | **Armazenamento** | `get-backup-repositories` | Informações de repositórios | GET | Não | Leitura |
 | **Licenciamento** | `get-license-info` | Detalhes da licença Veeam | GET | Não | Leitura |
@@ -167,6 +167,8 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 | **Controle** | `stop-backup-job` | Para job de backup em execução | POST | Sim | Escrita (Safety Guard) |
 
 **Safety Guard:** Ferramentas de escrita requerem `confirmationToken` e `reason` para execução segura.
+
+**🔍 Busca Semântica:** Ferramentas `get-backup-jobs` e `get-restore-points` suportam busca semântica inteligente (multi-palavra, normalização de acentos, busca parcial).
 
 ### 🔒 Autenticação Automática Inteligente
 
@@ -453,7 +455,8 @@ Lista todos os jobs de backup configurados no Veeam VBR com informações detalh
 Retorna lista completa de jobs de backup (ativos, desabilitados, em manutenção). Essencial para dashboards de monitoramento, validação de políticas de backup e auditoria de compliance.
 
 **Parâmetros:**
-- Nenhum (lista todos os jobs)
+- `nameFilter` (opcional): Busca semântica no nome do job (multi-palavra, acentos, parcial)
+- `descriptionFilter` (opcional): Busca semântica na descrição (suporta nomes de clientes MSP)
 
 **Retorno JSON:**
 - `id`: UUID do job (formato URN)
@@ -480,6 +483,8 @@ Retorna lista completa de jobs de backup (ativos, desabilitados, em manutenção
 - "Quais jobs rodam hoje à noite?"
 - "Jobs que fazem backup do SQL-PROD"
 - "Jobs com status Failed na última execução"
+- **🔍 Busca semântica:** "Jobs do cliente Gráfica" (encontra "Gráfica" mesmo sem acento)
+- **🔍 Multi-palavra:** "SK VCENTER" (busca "SK" e "VCENTER" separadamente)
 
 **Curl Example:**
 ```bash
@@ -888,7 +893,7 @@ Mostra todos os pontos de restauração de uma VM, incluindo data, tipo e reposi
 
 **Parâmetros:**
 - `vmId`: ID da VM (opcional)
-- `vmName`: Nome da VM (opcional)
+- `vmName`: Nome da VM (opcional, **busca semântica** multi-palavra e acentos)
 - `limit`: Máximo de restore points
 
 **Retorno JSON:**
@@ -913,6 +918,8 @@ Mostra todos os pontos de restauração de uma VM, incluindo data, tipo e reposi
 - "Pontos de restauração mais antigos"
 - "Restore points full da VM-PROD"
 - "Qual o último backup da VM-FILE-01?"
+- **🔍 Busca semântica:** "Restore points da Grafica" (encontra VM com "Gráfica")
+- **🔍 Multi-palavra:** "Backups SK SERVER" (busca VMs com "SK" e "SERVER")
 
 **Curl Example:**
 ```bash

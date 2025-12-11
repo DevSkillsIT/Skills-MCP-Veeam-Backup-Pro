@@ -447,6 +447,16 @@ for (const [toolName, toolFunction] of loadedTools) {
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
+│  │                 Semantic Search Layer                      │  │
+│  │  (lib/description-helpers.js)                             │  │
+│  │                                                            │  │
+│  │  • Multi-word tokenization (ex: "SK VCENTER" → ["SK", "VCENTER"]) │  │
+│  │  • NFD normalization (ex: "Grafica" matches "Gráfica")    │  │
+│  │  • Case-insensitive partial matching                      │  │
+│  │  • Relevance scoring and ranking                          │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
 │  │                  Veeam API Client                          │  │
 │  │  • HTTPS requests to Veeam REST API (port 9419)          │  │
 │  │  • Request/response transformation                        │  │
@@ -472,7 +482,10 @@ veeam-backup/
 ├── env.example                 # Template de configuração
 │
 ├── lib/                        # Bibliotecas compartilhadas
-│   └── auth-middleware.js      # Middleware de autenticação automática
+│   ├── auth-middleware.js      # Middleware de autenticação automática
+│   ├── mcp-auth-middleware.js  # Autenticação Bearer Token para MCP
+│   ├── safety-guard.js         # Proteção para operações críticas
+│   └── description-helpers.js  # Busca semântica (searchByName, normalização)
 │
 ├── tools/                      # Ferramentas MCP
 │   ├── backup-jobs-tool.js

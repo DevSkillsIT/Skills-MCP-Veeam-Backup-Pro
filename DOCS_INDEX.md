@@ -18,6 +18,7 @@
 - ✅ Configuração básica (.env + Bearer Token)
 - ✅ 16 ferramentas disponíveis (14 leitura + 2 escrita com Safety Guard)
 - ✅ Documentação detalhada de cada ferramenta com exemplos práticos e casos de uso
+- ✅ **Busca semântica** em `get-backup-jobs` (nameFilter, descriptionFilter) e `get-restore-points` (vmName)
 - ✅ Integração com Claude Code e Gemini CLI (MCP HTTP Streamable)
 - ✅ Exemplos práticos de uso
 - ✅ Licença MIT e créditos
@@ -219,7 +220,8 @@
 ├── 📁 lib/                            ← Bibliotecas
 │   ├── auth-middleware.js             ← Autenticação HTTP automática
 │   ├── mcp-auth-middleware.js         ← Autenticação MCP Bearer Token
-│   └── safety-guard.js                ← Proteção para operações críticas
+│   ├── safety-guard.js                ← Proteção para operações críticas
+│   └── description-helpers.js         ← Busca semântica (searchByName, normalização)
 │
 ├── 📁 tools/                          ← Ferramentas MCP (16 tools)
 │   ├── get-backup-jobs-tool.js        ← Lista todos os jobs de backup
