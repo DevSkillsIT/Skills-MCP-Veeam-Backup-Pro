@@ -52,13 +52,81 @@ export default function(server) {
           agent: httpsAgent
         });
         
+        let jobData;
+        let usedFallback = false;
+
         if (!jobResponse.ok) {
           const errorText = await jobResponse.text();
-          throw new Error(`Failed to fetch job details: ${jobResponse.status} ${jobResponse.statusText} - ${errorText}`);
+
+          // ════════════════════════════════════════════════════════════════════
+          // FALLBACK PARA HYPER-V: VBR REST API v1.2-rev0 não suporta Hyper-V
+          // via endpoint /api/v1/jobs/{id}. Solução: buscar via sessions.
+          // ════════════════════════════════════════════════════════════════════
+          if (errorText.includes('supported platform type')) {
+            console.log(`⚠️ Endpoint /jobs/{id} não suporta esta plataforma. Tentando fallback via sessions...`);
+
+            // Buscar session mais recente do job para extrair informações
+            const fallbackUrl = `https://${host}:${port}/api/v1/sessions?jobIdFilter=${jobId}&limit=1&sortOrder=descending`;
+            console.log(`Fallback: buscando via ${fallbackUrl}`);
+
+            const fallbackResponse = await fetch(fallbackUrl, {
+              method: 'GET',
+              headers: {
+                'accept': 'application/json',
+                'x-api-version': apiVersion,
+                'Authorization': `Bearer ${token}`
+              },
+              agent: httpsAgent
+            });
+
+            if (!fallbackResponse.ok) {
+              throw new Error(`Fallback falhou: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
+            }
+
+            const sessionsData = await fallbackResponse.json();
+
+            if (!sessionsData.data || sessionsData.data.length === 0) {
+              throw new Error(
+                `Job ${jobId} não encontrado via fallback. ` +
+                `Possíveis causas:\n` +
+                `- Job nunca foi executado (sem sessions)\n` +
+                `- Job não existe ou foi deletado\n` +
+                `- Plataforma não suportada pela API v1.2-rev0`
+              );
+            }
+
+            // Extrair informações do job a partir da session mais recente
+            const latestSession = sessionsData.data[0];
+            jobData = {
+              id: jobId,
+              name: latestSession.name || 'Unknown Job',
+              type: latestSession.sessionType || 'Unknown',
+              platformName: latestSession.platformName || 'Unknown Platform',
+              description: `Job extraído via fallback (plataforma: ${latestSession.platformName})`,
+              state: 'Unknown (via fallback)',
+              scheduleEnabled: null,
+              scheduleType: null,
+              lastRun: latestSession.creationTime,
+              nextRun: null,
+              retryCount: null,
+              retryWait: null,
+              result: {
+                result: latestSession.result?.result || 'Unknown',
+                message: latestSession.result?.message || 'No message'
+              }
+            };
+
+            usedFallback = true;
+            console.log(`✅ Fallback bem-sucedido. Dados extraídos da session mais recente.`);
+          } else {
+            // Erro não relacionado a plataforma - propagar
+            throw new Error(`Failed to fetch job details: ${jobResponse.status} ${jobResponse.statusText} - ${errorText}`);
+          }
+        } else {
+          // Sucesso no endpoint padrão
+          jobData = await jobResponse.json();
+          console.log(`Received job data:`, JSON.stringify(jobData, null, 2));
         }
-        
-        const jobData = await jobResponse.json();
-        console.log(`Received job data:`, JSON.stringify(jobData, null, 2));
         
         let result = {
           job: {
@@ -78,6 +146,21 @@ export default function(server) {
             message: jobData.result?.message || 'No message'
           }
         };
+
+        // Adicionar aviso se fallback foi usado
+        if (usedFallback) {
+          result._fallback = {
+            used: true,
+            reason: 'Platform not supported by /api/v1/jobs endpoint (Hyper-V limitation in VBR REST API v1.2-rev0)',
+            method: 'Extracted job information from most recent session',
+            limitations: [
+              'Schedule details (scheduleEnabled, scheduleType, nextRun) not available',
+              'Retry configuration (retryCount, retryWait) not available',
+              'Current job state not available (only last execution state)'
+            ],
+            recommendation: 'For complete job configuration, use Veeam Console or PowerShell cmdlets'
+          };
+        }
         
         // Get recent sessions for this job if requested
         if (includeSessions) {

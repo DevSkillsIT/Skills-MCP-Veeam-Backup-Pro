@@ -135,6 +135,7 @@ export default function(server) {
           // Enriquecer session com categorização
           const categorizedSession = {
             id: session.id,
+            jobId: session.jobId || null, // ← NOVO: ID do job (configuração)
             name: session.name,
             sessionType: session.sessionType,
             sessionTypeFormatted: formatSessionType(session.sessionType),
@@ -213,6 +214,7 @@ export default function(server) {
             const categorization = categorizeSessionType(session.sessionType);
             return {
               id: session.id,
+              jobId: session.jobId || null, // ← NOVO: ID do job (configuração)
               name: session.name,
               sessionType: session.sessionType,
               sessionTypeFormatted: formatSessionType(session.sessionType),
