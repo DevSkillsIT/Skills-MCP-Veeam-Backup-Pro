@@ -13,6 +13,7 @@ import { authManager } from "./lib/auth-middleware.js";
 import { randomUUID } from 'crypto';
 import { mcpAuthMiddleware } from "./lib/mcp-auth-middleware.js";
 import { getMCPToolsList, isValidTool, getToolSchema } from "./lib/mcp-tools-dictionary.js";
+import { VEEAM_PROMPTS, handleGetPrompt } from "./lib/prompts.js";
 
 // Get the directory path
 const __filename = fileURLToPath(import.meta.url);
@@ -178,7 +179,8 @@ async function handleMCPInitialize() {
   return {
     protocolVersion: '2024-11-05',
     capabilities: {
-      tools: {}
+      tools: {},
+      prompts: {}
     },
     serverInfo: {
       name: 'veeam-backup',
@@ -195,6 +197,30 @@ async function handleMCPToolsList() {
   const tools = getMCPToolsList();
   console.log(`[MCP] 📋 Retornando lista de ${tools.length} ferramentas`);
   return { tools };
+}
+
+/**
+ * Handler: prompts/list
+ * Retorna lista de 15 prompts disponíveis
+ */
+async function handleMCPPromptsList() {
+  console.log(`[MCP] 📋 Retornando lista de ${VEEAM_PROMPTS.length} prompts`);
+  return { prompts: VEEAM_PROMPTS };
+}
+
+/**
+ * Handler: prompts/get
+ * Executa um prompt específico
+ */
+async function handleMCPPromptsGet(params) {
+  const { name, arguments: args } = params;
+  console.log(`[MCP] 🎯 Executando prompt: ${name}`);
+
+  // Obter cliente Veeam autenticado (mesmo padrão das tools)
+  const veeamClient = await authManager.ensureAuthenticated();
+
+  const result = await handleGetPrompt(name, args || {}, veeamClient);
+  return result;
 }
 
 /**
@@ -502,6 +528,14 @@ function createHttpServer() {
 
         case 'tools/call':
           result = await handleMCPToolCall(params);
+          break;
+
+        case 'prompts/list':
+          result = await handleMCPPromptsList();
+          break;
+
+        case 'prompts/get':
+          result = await handleMCPPromptsGet(params);
           break;
 
         case 'notifications/initialized':
