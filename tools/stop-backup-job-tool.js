@@ -20,7 +20,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "stop-backup-job",
+    "veeam_stop_backup_job",
     {
       jobId: z.string().describe("ID do backup job a parar (UUID)"),
       confirmationToken: z.string().optional().describe("Token de confirmação (obrigatório se MCP_SAFETY_GUARD=true)"),
@@ -31,13 +31,13 @@ export default function(server) {
       const { jobId, confirmationToken, reason } = params;
 
       // Log de início da operação
-      console.log(`[stop-backup-job] Parando job: ${jobId}`);
+      console.log(`[veeam_stop_backup_job] Parando job: ${jobId}`);
 
       try {
         // SAFETY GUARD: Validar confirmação para operação crítica
         // Esta verificação DEVE ser a primeira coisa antes de qualquer operação
         await safetyGuard.requireConfirmation(
-          'stop-backup-job',
+          'veeam_stop_backup_job',
           confirmationToken,
           reason,
           jobId,
@@ -48,10 +48,10 @@ export default function(server) {
         validateVeeamId(jobId, "job");
 
         // 2. Validar que job existe e pode ser parado
-        console.log(`[stop-backup-job] Validando job...`);
+        console.log(`[veeam_stop_backup_job] Validando job...`);
         const job = await validateJobOperation(jobId, 'stop');
 
-        console.log(`[stop-backup-job] ✅ Job "${job.name}" validado. Parando execução...`);
+        console.log(`[veeam_stop_backup_job] ✅ Job "${job.name}" validado. Parando execução...`);
 
         // 3. Autenticação
         const { host, port, token, apiVersion } = await ensureAuthenticated();
@@ -60,7 +60,7 @@ export default function(server) {
         // Endpoint: POST /api/v1/jobs/{id}/stop
         const stopUrl = `https://${host}:${port}/api/v1/jobs/${jobId}/stop`;
 
-        console.log(`[stop-backup-job] POST ${stopUrl}`);
+        console.log(`[veeam_stop_backup_job] POST ${stopUrl}`);
 
         // 5. Executar POST para parar job
         const response = await fetch(stopUrl, {
@@ -80,7 +80,7 @@ export default function(server) {
           const errorText = await response.text();
 
           // Log de auditoria de falha
-          await logOperation('stop-backup-job', {
+          await logOperation('veeam_stop_backup_job', {
             jobId,
             jobName: job.name,
             result: 'failed',
@@ -104,11 +104,11 @@ export default function(server) {
           stopResult = await response.json();
         }
 
-        console.log(`[stop-backup-job] ✅ Job parado com sucesso`);
-        console.log(`[stop-backup-job] Resultado:`, stopResult);
+        console.log(`[veeam_stop_backup_job] ✅ Job parado com sucesso`);
+        console.log(`[veeam_stop_backup_job] Resultado:`, stopResult);
 
         // 8. Log de auditoria de sucesso
-        await logOperation('stop-backup-job', {
+        await logOperation('veeam_stop_backup_job', {
           jobId,
           jobName: job.name,
           result: 'success',
@@ -120,7 +120,7 @@ export default function(server) {
 
         // 9. Construir resposta enriquecida
         const operationResponse = enrichOperationResponse(
-          "stop-backup-job",
+          "veeam_stop_backup_job",
           {
             status: "stopped",
             stoppedAt: new Date().toISOString(),
@@ -166,8 +166,8 @@ export default function(server) {
             descriptionFormatted: formatDescriptionForAI(job.description)
           },
           nextSteps: {
-            checkFinalState: `Use get-job-details com jobId: ${job.id} para verificar estado final`,
-            viewLastSession: `Use get-backup-sessions com jobIdFilter: ${job.id} para ver última execução`,
+            checkFinalState: `Use veeam_get_backup_job_details com jobId: ${job.id} para verificar estado final`,
+            viewLastSession: `Use veeam_list_backup_sessions com jobIdFilter: ${job.id} para ver última execução`,
             checkLogs: `Verifique logs da session para entender motivo da parada`
           },
           warnings: [
@@ -187,10 +187,10 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 
       } catch (error) {
-        console.error('[stop-backup-job] Erro:', error);
+        console.error('[veeam_stop_backup_job] Erro:', error);
 
         // Log de auditoria de erro
-        await logOperation('stop-backup-job', {
+        await logOperation('veeam_stop_backup_job', {
           jobId,
           jobName: jobId, // Usamos jobId porque job pode não ter sido carregado
           result: 'failed',
@@ -199,16 +199,16 @@ export default function(server) {
 
         const errorResponse = {
           error: true,
-          operation: "stop-backup-job",
+          operation: "veeam_stop_backup_job",
           message: error.message,
           jobId: jobId,
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
-              "Verifique que o jobId está correto (use get-backup-jobs)",
+              "Verifique que o jobId está correto (use veeam_list_backup_jobs)",
               "Confirme que o job está em execução (state=3 'Working')",
               "Verifique permissões do usuário no VBR",
-              "Use get-running-sessions para verificar sessions ativas",
+              "Use veeam_list_running_sessions para verificar sessions ativas",
               "Se job não parar, verifique VBR console para estado atual"
             ],
             alternatives: [

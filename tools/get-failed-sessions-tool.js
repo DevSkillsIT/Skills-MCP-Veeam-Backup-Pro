@@ -16,7 +16,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-failed-sessions",
+    "veeam_list_failed_sessions",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Máximo de sessions a retornar (padrão: 100)"),
       hours: z.number().min(1).max(168).optional().describe("Filtrar por últimas X horas (opcional, max: 168h = 7 dias)")
@@ -37,7 +37,7 @@ export default function(server) {
         });
 
         const apiUrl = `https://${host}:${port}/api/v1/sessions?${queryParams.toString()}`;
-        console.log(`[get-failed-sessions] Buscando sessions falhadas: ${apiUrl}`);
+        console.log(`[veeam_list_failed_sessions] Buscando sessions falhadas: ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -57,7 +57,7 @@ export default function(server) {
         }
 
         const sessionsData = await response.json();
-        console.log(`[get-failed-sessions] Recebido: ${sessionsData.data?.length || 0} sessions`);
+        console.log(`[veeam_list_failed_sessions] Recebido: ${sessionsData.data?.length || 0} sessions`);
 
         // Enriquecer cada session
         let enrichedSessions = sessionsData.data ? sessionsData.data.map(session => enrichSessionData(session)) : [];
@@ -65,7 +65,7 @@ export default function(server) {
         // Filtrar por período se especificado
         if (hours && hours > 0) {
           const cutoffTime = new Date(Date.now() - (hours * 60 * 60 * 1000));
-          console.log(`[get-failed-sessions] Filtrando por últimas ${hours}h (desde ${formatDateTime(cutoffTime.toISOString())})`);
+          console.log(`[veeam_list_failed_sessions] Filtrando por últimas ${hours}h (desde ${formatDateTime(cutoffTime.toISOString())})`);
 
           enrichedSessions = enrichedSessions.filter(session => {
             if (!session.creationTime) {
@@ -75,7 +75,7 @@ export default function(server) {
             return sessionTime >= cutoffTime;
           });
 
-          console.log(`[get-failed-sessions] Após filtro de tempo: ${enrichedSessions.length} sessions`);
+          console.log(`[veeam_list_failed_sessions] Após filtro de tempo: ${enrichedSessions.length} sessions`);
         }
 
         // Verificar se há sessions falhadas
@@ -101,16 +101,16 @@ export default function(server) {
                 "Jobs estão configurados corretamente"
               ],
               nextSteps: [
-                "Verifique sessions com warnings: get-backup-sessions com resultFilter=Warning",
-                "Monitore sessions em execução: get-running-sessions",
-                "Revise configuração de jobs: get-backup-jobs"
+                "Verifique sessions com warnings: veeam_list_backup_sessions com resultFilter=Warning",
+                "Monitore sessions em execução: veeam_list_running_sessions",
+                "Revise configuração de jobs: veeam_list_backup_jobs"
               ]
             }
           };
 
           const enrichedResponse = enrichListResponse(
             [],
-            "get-failed-sessions",
+            "veeam_list_failed_sessions",
             { resultFilter: "Failed", hours: hours || null },
             { limit, skip: 0, total: 0 }
           );
@@ -215,14 +215,14 @@ export default function(server) {
         // Aplicar enriquecimento de lista
         const enrichedResponse = enrichListResponse(
           responseData.sessions,
-          "get-failed-sessions",
+          "veeam_list_failed_sessions",
           { resultFilter: "Failed", hours: hours || null },
           sessionsData.pagination
         );
 
         // Adicionar dicas de troubleshooting
         const troubleshootingTips = [
-          "Verifique logs detalhados de cada session com get-session-log",
+          "Verifique logs detalhados de cada session com veeam_get_session_log",
           "Analise padrões nos top erros para identificar problemas comuns",
           "Confirme que repositórios têm espaço suficiente",
           "Verifique conectividade de rede com VMs/hosts de origem",
@@ -242,18 +242,18 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(finalResponse, startTime));
 
       } catch (error) {
-        console.error('[get-failed-sessions] Erro:', error);
+        console.error('[veeam_list_failed_sessions] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-failed-sessions",
+          tool: "veeam_list_failed_sessions",
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
               "Verifique conectividade com o VBR server",
               "Confirme que credenciais estão corretas no .env",
-              "Use get-backup-sessions para debug (sem filtros)"
+              "Use veeam_list_backup_sessions para debug (sem filtros)"
             ]
           }
         };

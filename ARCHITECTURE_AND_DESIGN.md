@@ -106,7 +106,7 @@ Esta arquitetura garante compatibilidade universal com todos os clientes MCP e A
   "result": {
     "tools": [
       {
-        "name": "get-backup-jobs",
+        "name": "veeam_list_backup_jobs",
         "description": "Lista todos os jobs de backup configurados",
         "inputSchema": {
           "type": "object",
@@ -130,7 +130,7 @@ Esta arquitetura garante compatibilidade universal com todos os clientes MCP e A
   "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
-    "name": "get-backup-jobs",
+    "name": "veeam_list_backup_jobs",
     "arguments": {}
   },
   "id": 3

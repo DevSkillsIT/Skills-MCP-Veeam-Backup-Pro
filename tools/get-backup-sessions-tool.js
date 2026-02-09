@@ -12,7 +12,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add backup job sessions tool
   server.tool(
-    "get-backup-sessions",
+    "veeam_list_backup_sessions",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Maximum number of sessions to retrieve"),
       skip: z.number().min(0).default(0).describe("Number of sessions to skip (for pagination)"),
@@ -150,7 +150,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-backup-sessions] Falha na autenticação automática:', authError);
+          console.error('[veeam_list_backup_sessions] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",
@@ -166,7 +166,7 @@ export default function(server) {
         }
 
         // Erro genérico
-        console.error('Error in get-backup-sessions:', authError);
+        console.error('Error in veeam_list_backup_sessions:', authError);
         return {
           content: [{
             type: "text",
@@ -175,7 +175,7 @@ export default function(server) {
                   `1. Verify the VBR server is accessible\n` +
                   `2. Check your user permissions\n` +
                   `3. Try removing filters to see all session types\n` +
-                  `4. Use get-backup-jobs to see configured backup jobs first`
+                  `4. Use veeam_list_backup_jobs to see configured backup jobs first`
           }],
           isError: true
         };

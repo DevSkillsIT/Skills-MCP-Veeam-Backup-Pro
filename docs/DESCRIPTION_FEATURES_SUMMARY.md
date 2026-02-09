@@ -21,10 +21,10 @@ Biblioteca com 6 funções principais para gerenciar informações de cliente em
 | `enrichJobWithDescription()` | Enriquece job com metadados computados | ✅ Completo |
 
 ### 2. Tool Integration Updates
-- ✅ `get-backup-jobs` - Adicionado parâmetro `descriptionFilter`
-- ✅ `get-backup-copy-jobs` - Adicionado parâmetro `descriptionFilter`
-- ✅ `start-backup-job` - Retorna `description` na resposta
-- ✅ `stop-backup-job` - Retorna `description` na resposta
+- ✅ `veeam_list_backup_jobs` - Adicionado parâmetro `descriptionFilter`
+- ✅ `veeam_list_backup_copy_jobs` - Adicionado parâmetro `descriptionFilter`
+- ✅ `veeam_start_backup_job` - Retorna `description` na resposta
+- ✅ `veeam_stop_backup_job` - Retorna `description` na resposta
 
 ---
 
@@ -48,16 +48,16 @@ TOTAL                          30/30  ✅
 ```
 Tool                           Status
 ────────────────────────────────────
-get-server-info                ✅
-get-license-info               ✅
-get-backup-jobs                ✅
-get-backup-sessions            ✅
-get-backup-proxies             ✅
-get-backup-repositories        ✅
-get-running-sessions           ✅
-get-failed-sessions            ✅
-get-backup-copy-jobs           ✅
-get-restore-points             ✅
+veeam_get_server_info                ✅
+veeam_get_license_info               ✅
+veeam_list_backup_jobs                ✅
+veeam_list_backup_sessions            ✅
+veeam_list_backup_proxies             ✅
+veeam_list_backup_repositories        ✅
+veeam_list_running_sessions           ✅
+veeam_list_failed_sessions            ✅
+veeam_list_backup_copy_jobs           ✅
+veeam_list_restore_points             ✅
 ────────────────────────────────────
 TOTAL                          10/10 ✅
 ```
@@ -80,7 +80,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"get-backup-jobs",
+      "name":"veeam_list_backup_jobs",
       "arguments":{
         "descriptionFilter":"ACME"
       }
@@ -132,10 +132,10 @@ descriptionFilter: "Premium"
 - ✅ `/opt/mcp-servers/veeam-backup/QUALITY_VERIFICATION_REPORT_DESCRIPTION_FEATURES.md`
 
 ### Modificados:
-- ✅ `/opt/mcp-servers/veeam-backup/tools/get-backup-jobs-tool.js` (+15 linhas)
-- ✅ `/opt/mcp-servers/veeam-backup/tools/get-backup-copy-jobs-tool.js` (+15 linhas)
-- ✅ `/opt/mcp-servers/veeam-backup/tools/start-backup-job-tool.js` (+10 linhas)
-- ✅ `/opt/mcp-servers/veeam-backup/tools/stop-backup-job-tool.js` (+10 linhas)
+- ✅ `/opt/mcp-servers/veeam-backup/tools/veeam_list_backup_jobs-tool.js` (+15 linhas)
+- ✅ `/opt/mcp-servers/veeam-backup/tools/veeam_list_backup_copy_jobs-tool.js` (+15 linhas)
+- ✅ `/opt/mcp-servers/veeam-backup/tools/veeam_start_backup_job-tool.js` (+10 linhas)
+- ✅ `/opt/mcp-servers/veeam-backup/tools/veeam_stop_backup_job-tool.js` (+10 linhas)
 
 ---
 

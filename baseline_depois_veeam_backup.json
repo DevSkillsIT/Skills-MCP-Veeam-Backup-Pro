@@ -1,0 +1,265 @@
+{
+  "timestamp": "2026-02-09T20:36:47.391137+00:00",
+  "mcp_server": "veeam-backup",
+  "phase": "DEPOIS",
+  "tools_list": [
+    {
+      "name": "veeam_list_backup_jobs",
+      "description": "Jobs de backup (VMs, replicação, cópia) configurados no servidor Veeam Backup & Replication. Use para inventário, auditoria ou busca de jobs Veeam por tipo (Backup, Replica, BackupCopy), estado ou nome. Retorna lista paginada com configurações, schedule e status de cada job.",
+      "description_chars": 275,
+      "params": [
+        "limit",
+        "skip",
+        "typeFilter",
+        "stateFilter",
+        "nameFilter"
+      ]
+    },
+    {
+      "name": "veeam_list_backup_sessions",
+      "description": "Histórico de execuções (sessions) dos backup jobs no servidor Veeam Backup & Replication. Use para análise de desempenho, auditoria de backups Veeam ou verificação de status. Retorna sessions com resultado (Success, Warning, Failed), horários, duração e dados processados.",
+      "description_chars": 272,
+      "params": [
+        "limit",
+        "skip",
+        "jobId",
+        "statusFilter"
+      ]
+    },
+    {
+      "name": "veeam_get_backup_job_details",
+      "description": "Detalhes completos de um backup job específico no servidor Veeam Backup & Replication. Use para auditoria, troubleshooting ou análise de configuração Veeam. Retorna VMs incluídas, schedule, repositório de destino, proxy, tipo de backup (incremental/full), retenção e estatísticas.",
+      "description_chars": 280,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "veeam_list_backup_proxies",
+      "description": "Proxies de backup configurados no servidor Veeam Backup & Replication. Use para diagnóstico de desempenho, inventário de infraestrutura Veeam ou verificação de disponibilidade. Retorna nome, tipo (VMware, Hyper-V), host, status (Online/Offline) e tarefas concorrentes de cada proxy.",
+      "description_chars": 282,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_list_backup_repositories",
+      "description": "Repositórios de armazenamento de backups configurados no servidor Veeam Backup & Replication. Use para planejamento de capacidade, monitoramento de espaço ou inventário Veeam. Retorna nome, tipo (Local, Network, Cloud), capacidade total, espaço livre, status e jobs associados.",
+      "description_chars": 277,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_get_license_info",
+      "description": "Licenciamento do servidor Veeam Backup & Replication com dados de compliance e cobertura. Use para auditoria de licenças Veeam, verificação de expiração ou validação de features. Retorna tipo (Community, Standard, Enterprise Plus), status, data de expiração e VMs licenciadas.",
+      "description_chars": 276,
+      "params": []
+    },
+    {
+      "name": "veeam_get_license_workloads",
+      "description": "Workloads protegidos pela licença do servidor Veeam Backup & Replication com detalhes por tipo. Use para auditoria de cobertura, planejamento de capacidade ou compliance Veeam. Retorna contagem de workloads por categoria (VM, Server, Cloud), slots usados e slots disponíveis.",
+      "description_chars": 275,
+      "params": []
+    },
+    {
+      "name": "veeam_get_server_info",
+      "description": "Informações gerais do servidor Veeam Backup & Replication para diagnóstico e inventário. Use para verificar versão, build, banco de dados ou status geral do ambiente Veeam. Retorna nome do servidor, versão do VBR, build number, vendor do banco, edição SQL e schema version.",
+      "description_chars": 273,
+      "params": []
+    },
+    {
+      "name": "veeam_start_backup_job",
+      "description": "Execução sob demanda de um backup job no servidor Veeam Backup & Replication fora do schedule. Use para backups emergenciais, testes de DR ou execução manual Veeam. Retorna UUID da session criada. Requer permissões de operador. Permite escolher entre backup incremental ou full.",
+      "description_chars": 278,
+      "params": [
+        "jobId",
+        "fullBackup"
+      ]
+    },
+    {
+      "name": "veeam_stop_backup_job",
+      "description": "Interrupção graciosa de um backup job em execução no servidor Veeam Backup & Replication. Use para manutenções emergenciais, liberação de recursos ou cancelamento Veeam. Aguarda conclusão da VM atual antes de parar. Requer permissões de operador. Pode levar alguns minutos.",
+      "description_chars": 273,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "veeam_list_running_sessions",
+      "description": "Sessions ativas (em execução) no servidor Veeam Backup & Replication incluindo backup jobs e system tasks. Use para monitoramento em tempo real do ambiente Veeam. Retorna separado em backupJobs (BackupJob, ReplicaJob) e systemTasks (MalwareDetection, SureBackup, Restore).",
+      "description_chars": 272,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_list_running_backup_jobs",
+      "description": "Backup jobs ativos (em execução) no servidor Veeam Backup & Replication, excluindo tarefas de sistema. Use para monitoramento focado em backups reais Veeam. Retorna apenas BackupJob, ReplicaJob, BackupCopyJob e EpAgentBackup. Exclui MalwareDetection, SureBackup e Restore.",
+      "description_chars": 272,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_list_failed_sessions",
+      "description": "Sessions com falha (status Failed) no servidor Veeam Backup & Replication para troubleshooting. Use para diagnóstico de problemas, análise de erros ou relatórios de falhas Veeam. Retorna job afetado, horário da falha, mensagens de erro. Filtrável por janela de tempo em horas.",
+      "description_chars": 276,
+      "params": [
+        "limit",
+        "hours"
+      ]
+    },
+    {
+      "name": "veeam_list_backup_copy_jobs",
+      "description": "Backup copy jobs (cópias secundárias regra 3-2-1) configurados no servidor Veeam Backup & Replication. Use para auditoria de DR, verificação de conformidade ou inventário Veeam. Retorna repositório de origem/destino, schedule, retenção e status de sincronização de cada job.",
+      "description_chars": 274,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_list_restore_points",
+      "description": "Pontos de restauração (restore points) disponíveis para VMs no servidor Veeam Backup & Replication. Use para planejamento de restore, auditoria de RPO ou verificação de backups Veeam. Retorna data/hora, tipo (full/incremental), tamanho e repositório. Filtrável por nome ou UUID da VM.",
+      "description_chars": 284,
+      "params": [
+        "vmName",
+        "vmId",
+        "limit"
+      ]
+    },
+    {
+      "name": "veeam_get_backup_job_schedule",
+      "description": "Agendamento (schedule) de um backup job específico no servidor Veeam Backup & Replication. Use para planejamento de janelas de backup, auditoria de políticas ou verificação Veeam. Retorna tipo (Daily, Weekly, Monthly), horários, dias, retenção, política de full e próxima execução.",
+      "description_chars": 281,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "veeam_get_session_log",
+      "description": "Log detalhado de uma session de backup específica no servidor Veeam Backup & Replication. Use para troubleshooting de falhas, análise de desempenho ou auditoria Veeam. Retorna entradas com timestamps, componentes, warnings e erros. Filtrável por nível (Info, Warning, Error, Debug).",
+      "description_chars": 282,
+      "params": [
+        "sessionId",
+        "logLevel"
+      ]
+    }
+  ],
+  "tool_tests": {
+    "veeam_get_server_info": {
+      "input": {},
+      "success": true,
+      "response_keys": [
+        "vbrId",
+        "name",
+        "buildVersion",
+        "patches",
+        "databaseVendor",
+        "sqlServerEdition",
+        "sqlServerVersion",
+        "databaseSchemaVersion",
+        "databaseContentVersion"
+      ],
+      "response_size": 352,
+      "has_data": true
+    },
+    "veeam_list_backup_jobs": {
+      "input": {
+        "limit": 3
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "jobs",
+        "pagination",
+        "filters"
+      ],
+      "response_size": 1029,
+      "has_data": true
+    },
+    "veeam_list_running_sessions": {
+      "input": {
+        "limit": 5
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "backupJobs",
+        "systemTasks",
+        "statistics",
+        "sessions",
+        "pagination",
+        "_metadata",
+        "_performance"
+      ],
+      "response_size": 3175,
+      "has_data": true
+    },
+    "veeam_list_failed_sessions": {
+      "input": {
+        "limit": 3,
+        "hours": 24
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "analysis",
+        "sessions",
+        "pagination",
+        "_metadata",
+        "_troubleshooting",
+        "_performance"
+      ],
+      "response_size": 4977,
+      "has_data": true
+    },
+    "veeam_list_backup_repositories": {
+      "input": {
+        "limit": 5
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "warnings",
+        "offline",
+        "healthy",
+        "cloud",
+        "unknown",
+        "pagination"
+      ],
+      "response_size": 2714,
+      "has_data": true
+    },
+    "veeam_get_license_info": {
+      "input": {},
+      "success": true,
+      "response_keys": [
+        "status",
+        "edition",
+        "expirationDate",
+        "licensedTo",
+        "instanceLicenseSummary",
+        "supportExpirationDate"
+      ],
+      "response_size": 309,
+      "has_data": true
+    },
+    "veeam_get_license_workloads": {
+      "input": {},
+      "success": true,
+      "response_keys": [
+        "VM",
+        "Server"
+      ],
+      "response_size": 12007,
+      "has_data": true
+    }
+  },
+  "tools_count": 17,
+  "naming_convention": {
+    "prefix": "veeam_",
+    "pattern": "{MCP_ID}_{verb}_{resource}",
+    "all_compliant": true
+  }
+}

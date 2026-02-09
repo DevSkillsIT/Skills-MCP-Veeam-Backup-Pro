@@ -37,9 +37,9 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 | Tool | Linhas | Endpoint | Propósito |
 |------|--------|----------|-----------|
-| `get-running-sessions-tool.js` | 207 | GET /api/v1/sessions?stateFilter=Working | Monitorar sessions em execução |
-| `get-failed-sessions-tool.js` | 279 | GET /api/v1/sessions?resultFilter=Failed | Morning checklist MSP |
-| `get-backup-copy-jobs-tool.js` | 243 | GET /api/v1/jobs?typeFilter=BackupCopy | Compliance 3-2-1 rule |
+| `veeam_list_running_sessions-tool.js` | 207 | GET /api/v1/sessions?stateFilter=Working | Monitorar sessions em execução |
+| `veeam_list_failed_sessions-tool.js` | 279 | GET /api/v1/sessions?resultFilter=Failed | Morning checklist MSP |
+| `veeam_list_backup_copy_jobs-tool.js` | 243 | GET /api/v1/jobs?typeFilter=BackupCopy | Compliance 3-2-1 rule |
 
 **Total de código Quick Wins:** ~729 linhas
 
@@ -47,8 +47,8 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 | Tool | Linhas | Endpoint | Propósito |
 |------|--------|----------|-----------|
-| `start-backup-job-tool.js` | 163 | POST /api/v1/jobs/{id}/start | Iniciar job sob demanda |
-| `stop-backup-job-tool.js` | 180 | POST /api/v1/jobs/{id}/stop | Parar job em execução |
+| `veeam_start_backup_job-tool.js` | 163 | POST /api/v1/jobs/{id}/start | Iniciar job sob demanda |
+| `veeam_stop_backup_job-tool.js` | 180 | POST /api/v1/jobs/{id}/stop | Parar job em execução |
 
 **Total de código POST:** ~343 linhas
 
@@ -56,9 +56,9 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 | Tool | Linhas | Endpoint | Propósito |
 |------|--------|----------|-----------|
-| `get-restore-points-tool.js` | 278 | GET /api/v1/vmRestorePoints?vmIdFilter={id} | Listar restore points de VM |
-| `get-job-schedule-tool.js` | 307 | GET /api/v1/jobs/{id} | Detalhes de scheduling |
-| `get-session-log-tool.js` | 310 | GET /api/v1/sessions/{id}/log | Logs de troubleshooting |
+| `veeam_list_restore_points-tool.js` | 278 | GET /api/v1/vmRestorePoints?vmIdFilter={id} | Listar restore points de VM |
+| `veeam_get_backup_job_schedule-tool.js` | 307 | GET /api/v1/jobs/{id} | Detalhes de scheduling |
+| `veeam_get_session_log-tool.js` | 310 | GET /api/v1/sessions/{id}/log | Logs de troubleshooting |
 
 **Total de código GET Avançado:** ~895 linhas
 
@@ -81,20 +81,20 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 ### 1. Monitoramento em Tempo Real
 
-**get-running-sessions:**
+**veeam_list_running_sessions:**
 - Lista apenas sessions em execução (state=Working)
 - Calcula progresso médio e tempo estimado restante
 - Agrupa por tipo de job
 - Estatísticas de execução
 
-**get-failed-sessions:**
+**veeam_list_failed_sessions:**
 - Lista sessions que falharam (result=Failed)
 - Filtro por período (últimas X horas)
 - Análise de top erros
 - Agrupamento por tipo de job
 - Severidade de falhas (CRÍTICO, ALTO, MÉDIO)
 
-**get-backup-copy-jobs:**
+**veeam_list_backup_copy_jobs:**
 - Lista apenas Backup Copy jobs (3-2-1 rule)
 - Score de compliance 3-2-1
 - Análise de configuração
@@ -102,14 +102,14 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 ### 2. Controle de Jobs
 
-**start-backup-job:**
+**veeam_start_backup_job:**
 - Inicia job sob demanda
 - Opção de full ou incremental backup
 - Validação de estado (job deve estar parado)
 - Retorna session ID criado
 - Audit logging completo
 
-**stop-backup-job:**
+**veeam_stop_backup_job:**
 - Interrompe job em execução
 - Validação de estado (job deve estar rodando)
 - Warnings sobre snapshots órfãos
@@ -117,21 +117,21 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 ### 3. Troubleshooting Avançado
 
-**get-restore-points:**
+**veeam_list_restore_points:**
 - Lista restore points de uma VM
 - Ordenação por data (mais recente primeiro)
 - Análise de retention
 - Cálculo de idade dos restore points
 - Formatação de tamanhos
 
-**get-job-schedule:**
+**veeam_get_backup_job_schedule:**
 - Detalhes de scheduling de um job
 - Parsing de padrões (Daily, Monthly, Periodically, etc)
 - Próxima execução estimada
 - Configuração de retry
 - Recomendações baseadas em schedule
 
-**get-session-log:**
+**veeam_get_session_log:**
 - Logs detalhados de uma session
 - Filtro por nível (All, Info, Warning, Error, Debug)
 - Análise de top erros
@@ -184,7 +184,7 @@ Implementação bem-sucedida de **9 novas tools** para o MCP Veeam Backup, expan
 
 **Campos registrados:**
 - timestamp (ISO 8601)
-- operation (ex: "start-backup-job")
+- operation (ex: "veeam_start_backup_job")
 - jobId, jobName
 - result (success, failed)
 - user (mcp-user)
@@ -353,18 +353,18 @@ Todas as respostas incluem metadados:
 - [x] Enrichers adicionam metadados
 
 **Tools GET Simples:**
-- [x] get-running-sessions retorna lista
-- [x] get-failed-sessions filtra por período
-- [x] get-backup-copy-jobs calcula compliance
+- [x] veeam_list_running_sessions retorna lista
+- [x] veeam_list_failed_sessions filtra por período
+- [x] veeam_list_backup_copy_jobs calcula compliance
 
 **Tools POST:**
-- [x] start-backup-job valida estado
-- [x] stop-backup-job registra audit log
+- [x] veeam_start_backup_job valida estado
+- [x] veeam_stop_backup_job registra audit log
 
 **Tools GET Avançadas:**
-- [x] get-restore-points formata datas
-- [x] get-job-schedule parseia padrões
-- [x] get-session-log filtra por nível
+- [x] veeam_list_restore_points formata datas
+- [x] veeam_get_backup_job_schedule parseia padrões
+- [x] veeam_get_session_log filtra por nível
 
 ---
 
@@ -380,7 +380,7 @@ pm2 restart veeam-backup
 curl http://localhost:8825/health
 
 # Testar uma tool
-curl -X POST http://localhost:8825/get-running-sessions \
+curl -X POST http://localhost:8825/veeam_list_running_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 10}'
 ```

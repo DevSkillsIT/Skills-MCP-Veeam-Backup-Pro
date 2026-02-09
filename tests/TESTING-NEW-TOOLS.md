@@ -31,7 +31,7 @@
 
 ## BLOCO 1: Quick Wins (3 tools GET simples)
 
-### 1. get-running-sessions
+### 1. veeam_list_running_sessions
 
 **Propósito:** Listar apenas sessions em execução (real-time monitoring)
 
@@ -42,7 +42,7 @@ curl http://localhost:8825/health
 
 **Teste 2 - Listar sessions em execução:**
 ```bash
-curl -X POST http://localhost:8825/get-running-sessions \
+curl -X POST http://localhost:8825/veeam_list_running_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 50}'
 ```
@@ -54,20 +54,20 @@ curl -X POST http://localhost:8825/get-running-sessions \
 
 ---
 
-### 2. get-failed-sessions
+### 2. veeam_list_failed_sessions
 
 **Propósito:** Listar sessions que falharam (morning checklist MSP)
 
 **Teste 1 - Últimas 24 horas (padrão):**
 ```bash
-curl -X POST http://localhost:8825/get-failed-sessions \
+curl -X POST http://localhost:8825/veeam_list_failed_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 100}'
 ```
 
 **Teste 2 - Últimas 48 horas:**
 ```bash
-curl -X POST http://localhost:8825/get-failed-sessions \
+curl -X POST http://localhost:8825/veeam_list_failed_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 100, "hours": 48}'
 ```
@@ -79,13 +79,13 @@ curl -X POST http://localhost:8825/get-failed-sessions \
 
 ---
 
-### 3. get-backup-copy-jobs
+### 3. veeam_list_backup_copy_jobs
 
 **Propósito:** Listar Backup Copy jobs (3-2-1 rule compliance)
 
 **Teste 1 - Listar Backup Copy jobs:**
 ```bash
-curl -X POST http://localhost:8825/get-backup-copy-jobs \
+curl -X POST http://localhost:8825/veeam_list_backup_copy_jobs \
   -H 'Content-Type: application/json' \
   -d '{"limit": 100}'
 ```
@@ -99,13 +99,13 @@ curl -X POST http://localhost:8825/get-backup-copy-jobs \
 
 ## BLOCO 2: Tools POST (2 tools de controle)
 
-### 4. start-backup-job
+### 4. veeam_start_backup_job
 
 **Propósito:** Iniciar backup job sob demanda
 
 **Pré-requisito:** Obter ID de um job parado
 ```bash
-curl -X POST http://localhost:8825/get-backup-jobs \
+curl -X POST http://localhost:8825/veeam_list_backup_jobs \
   -H 'Content-Type: application/json' \
   -d '{"limit": 10}' | jq '.jobs[] | select(.state == 0) | .id'
 ```
@@ -114,14 +114,14 @@ curl -X POST http://localhost:8825/get-backup-jobs \
 ```bash
 JOB_ID="SEU_JOB_ID_AQUI"
 
-curl -X POST http://localhost:8825/start-backup-job \
+curl -X POST http://localhost:8825/veeam_start_backup_job \
   -H 'Content-Type: application/json' \
   -d "{\"jobId\": \"$JOB_ID\", \"fullBackup\": false}"
 ```
 
 **Teste 2 - Iniciar job full backup:**
 ```bash
-curl -X POST http://localhost:8825/start-backup-job \
+curl -X POST http://localhost:8825/veeam_start_backup_job \
   -H 'Content-Type: application/json' \
   -d "{\"jobId\": \"$JOB_ID\", \"fullBackup\": true}"
 ```
@@ -133,18 +133,18 @@ curl -X POST http://localhost:8825/start-backup-job \
 
 **Validação de audit log:**
 ```bash
-tail -f /opt/mcp-servers/veeam-backup/logs/audit.log | grep start-backup-job
+tail -f /opt/mcp-servers/veeam-backup/logs/audit.log | grep veeam_start_backup_job
 ```
 
 ---
 
-### 5. stop-backup-job
+### 5. veeam_stop_backup_job
 
 **Propósito:** Parar backup job em execução
 
 **Pré-requisito:** Job em execução (state=3)
 ```bash
-curl -X POST http://localhost:8825/get-running-sessions \
+curl -X POST http://localhost:8825/veeam_list_running_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 10}' | jq '.sessions[0].id'
 ```
@@ -153,7 +153,7 @@ curl -X POST http://localhost:8825/get-running-sessions \
 ```bash
 JOB_ID="SEU_JOB_ID_AQUI"
 
-curl -X POST http://localhost:8825/stop-backup-job \
+curl -X POST http://localhost:8825/veeam_stop_backup_job \
   -H 'Content-Type: application/json' \
   -d "{\"jobId\": \"$JOB_ID\"}"
 ```
@@ -165,14 +165,14 @@ curl -X POST http://localhost:8825/stop-backup-job \
 
 **Validação de audit log:**
 ```bash
-tail -f /opt/mcp-servers/veeam-backup/logs/audit.log | grep stop-backup-job
+tail -f /opt/mcp-servers/veeam-backup/logs/audit.log | grep veeam_stop_backup_job
 ```
 
 ---
 
 ## BLOCO 3: Tools GET Avançadas (4 tools)
 
-### 6. get-restore-points
+### 6. veeam_list_restore_points
 
 **Propósito:** Listar restore points de uma VM
 
@@ -180,7 +180,7 @@ tail -f /opt/mcp-servers/veeam-backup/logs/audit.log | grep stop-backup-job
 ```bash
 VM_ID="SEU_VM_ID_AQUI"
 
-curl -X POST http://localhost:8825/get-restore-points \
+curl -X POST http://localhost:8825/veeam_list_restore_points \
   -H 'Content-Type: application/json' \
   -d "{\"vmId\": \"$VM_ID\", \"limit\": 50}"
 ```
@@ -188,7 +188,7 @@ curl -X POST http://localhost:8825/get-restore-points \
 **Teste 2 - Por VM Name (fallback não implementado):**
 ```bash
 # Este teste deve retornar erro informativo
-curl -X POST http://localhost:8825/get-restore-points \
+curl -X POST http://localhost:8825/veeam_list_restore_points \
   -H 'Content-Type: application/json' \
   -d '{"vmName": "VM-Producao-01", "limit": 50}'
 ```
@@ -200,13 +200,13 @@ curl -X POST http://localhost:8825/get-restore-points \
 
 ---
 
-### 7. get-job-schedule
+### 7. veeam_get_backup_job_schedule
 
 **Propósito:** Obter detalhes de scheduling de um job
 
 **Pré-requisito:** Obter ID de um job
 ```bash
-curl -X POST http://localhost:8825/get-backup-jobs \
+curl -X POST http://localhost:8825/veeam_list_backup_jobs \
   -H 'Content-Type: application/json' \
   -d '{"limit": 5}' | jq '.jobs[0].id'
 ```
@@ -215,7 +215,7 @@ curl -X POST http://localhost:8825/get-backup-jobs \
 ```bash
 JOB_ID="SEU_JOB_ID_AQUI"
 
-curl -X POST http://localhost:8825/get-job-schedule \
+curl -X POST http://localhost:8825/veeam_get_backup_job_schedule \
   -H 'Content-Type: application/json' \
   -d "{\"jobId\": \"$JOB_ID\"}"
 ```
@@ -227,13 +227,13 @@ curl -X POST http://localhost:8825/get-job-schedule \
 
 ---
 
-### 8. get-session-log
+### 8. veeam_get_session_log
 
 **Propósito:** Obter log detalhado de uma session (troubleshooting)
 
 **Pré-requisito:** Obter ID de uma session
 ```bash
-curl -X POST http://localhost:8825/get-failed-sessions \
+curl -X POST http://localhost:8825/veeam_list_failed_sessions \
   -H 'Content-Type: application/json' \
   -d '{"limit": 5}' | jq '.sessions[0].id'
 ```
@@ -242,14 +242,14 @@ curl -X POST http://localhost:8825/get-failed-sessions \
 ```bash
 SESSION_ID="SEU_SESSION_ID_AQUI"
 
-curl -X POST http://localhost:8825/get-session-log \
+curl -X POST http://localhost:8825/veeam_get_session_log \
   -H 'Content-Type: application/json' \
   -d "{\"sessionId\": \"$SESSION_ID\", \"logLevel\": \"All\"}"
 ```
 
 **Teste 2 - Apenas erros:**
 ```bash
-curl -X POST http://localhost:8825/get-session-log \
+curl -X POST http://localhost:8825/veeam_get_session_log \
   -H 'Content-Type: application/json' \
   -d "{\"sessionId\": \"$SESSION_ID\", \"logLevel\": \"Error\"}"
 ```
@@ -273,23 +273,23 @@ curl -X POST http://localhost:8825/get-session-log \
 - [x] `/lib/response-enricher.js` criado
 
 **Quick Wins (GET simples):**
-- [ ] `get-running-sessions` testado
-- [ ] `get-failed-sessions` testado
-- [ ] `get-backup-copy-jobs` testado
+- [ ] `veeam_list_running_sessions` testado
+- [ ] `veeam_list_failed_sessions` testado
+- [ ] `veeam_list_backup_copy_jobs` testado
 
 **Tools POST (controle):**
-- [ ] `start-backup-job` testado (sucesso)
-- [ ] `start-backup-job` testado (validação de erro)
-- [ ] `stop-backup-job` testado (sucesso)
-- [ ] `stop-backup-job` testado (validação de erro)
+- [ ] `veeam_start_backup_job` testado (sucesso)
+- [ ] `veeam_start_backup_job` testado (validação de erro)
+- [ ] `veeam_stop_backup_job` testado (sucesso)
+- [ ] `veeam_stop_backup_job` testado (validação de erro)
 - [ ] Audit log registrando operações POST
 
 **Tools GET Avançadas:**
-- [ ] `get-restore-points` testado (vmId)
-- [ ] `get-restore-points` testado (vmName - erro esperado)
-- [ ] `get-job-schedule` testado
-- [ ] `get-session-log` testado (All)
-- [ ] `get-session-log` testado (Error filter)
+- [ ] `veeam_list_restore_points` testado (vmId)
+- [ ] `veeam_list_restore_points` testado (vmName - erro esperado)
+- [ ] `veeam_get_backup_job_schedule` testado
+- [ ] `veeam_get_session_log` testado (All)
+- [ ] `veeam_get_session_log` testado (Error filter)
 
 ---
 
@@ -325,7 +325,7 @@ curl -k https://VEEAM_HOST:9419/api/oauth2/token \
 **Solução:**
 ```bash
 # Verificar estado do job
-curl -X POST http://localhost:8825/get-backup-jobs \
+curl -X POST http://localhost:8825/veeam_list_backup_jobs \
   -H 'Content-Type: application/json' \
   -d '{"limit": 10}' | jq '.jobs[] | {name, state, stateFormatted}'
 ```

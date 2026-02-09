@@ -12,7 +12,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add job details tool
   server.tool(
-    "get-job-details",
+    "veeam_get_backup_job_details",
     {
       jobId: z.string().describe("ID of the backup job to get details for"),
       includeSessions: z.boolean().default(true).describe("Include recent sessions for this job"),
@@ -212,7 +212,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-job-details] Falha na autenticação automática:', authError);
+          console.error('[veeam_get_backup_job_details] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",
@@ -228,7 +228,7 @@ export default function(server) {
         }
 
         // Erro genérico
-        console.error('Error in get-job-details:', authError);
+        console.error('Error in veeam_get_backup_job_details:', authError);
         return {
           content: [{
             type: "text",
@@ -236,7 +236,7 @@ export default function(server) {
                   `Debugging tips:\n` +
                   `1. Verify the job ID is correct\n` +
                   `2. Check your user permissions\n` +
-                  `3. Use get-backup-jobs to find valid job IDs`
+                  `3. Use veeam_list_backup_jobs to find valid job IDs`
           }],
           isError: true
         };

@@ -12,7 +12,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add backup repositories tool
   server.tool(
-    "get-repositories",
+    "veeam_list_backup_repositories",
     {
       limit: z.number().min(1).max(1000).default(200).describe("Maximum number of repositories to retrieve"),
       skip: z.number().min(0).default(0).describe("Number of repositories to skip (for pagination)"),
@@ -130,7 +130,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-repositories] Falha na autenticação automática:', authError);
+          console.error('[veeam_list_backup_repositories] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",

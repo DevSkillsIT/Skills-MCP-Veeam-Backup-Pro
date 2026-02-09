@@ -17,7 +17,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-restore-points",
+    "veeam_list_restore_points",
     {
       vmName: z.string().optional().describe("Nome da VM com busca semântica (parcial, sem acentos) - usar OU vmId"),
       vmId: z.string().optional().describe("ID da VM (usar OU vmName)"),
@@ -45,11 +45,11 @@ export default function(server) {
 
         // Se apenas vmName foi fornecido, buscar vmId primeiro
         if (!vmId && vmName) {
-          console.log(`[get-restore-points] Buscando vmId para vmName: "${vmName}"`);
+          console.log(`[veeam_list_restore_points] Buscando vmId para vmName: "${vmName}"`);
           finalVmId = await findVmIdByName(vmName, host, port, token, apiVersion);
         }
 
-        console.log(`[get-restore-points] Buscando restore points para VM ID: ${finalVmId}`);
+        console.log(`[veeam_list_restore_points] Buscando restore points para VM ID: ${finalVmId}`);
 
         // Endpoint: GET /api/v1/vmRestorePoints?vmIdFilter={vmId}
         const queryParams = new URLSearchParams({
@@ -59,7 +59,7 @@ export default function(server) {
         });
 
         const apiUrl = `https://${host}:${port}/api/v1/vmRestorePoints?${queryParams.toString()}`;
-        console.log(`[get-restore-points] GET ${apiUrl}`);
+        console.log(`[veeam_list_restore_points] GET ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -79,7 +79,7 @@ export default function(server) {
         }
 
         const restorePointsData = await response.json();
-        console.log(`[get-restore-points] Recebido: ${restorePointsData.data?.length || 0} restore points`);
+        console.log(`[veeam_list_restore_points] Recebido: ${restorePointsData.data?.length || 0} restore points`);
 
         // Verificar se há restore points
         if (!restorePointsData.data || restorePointsData.data.length === 0) {
@@ -102,17 +102,17 @@ export default function(server) {
                 "VM ID incorreto ou VM não existe"
               ],
               recommendations: [
-                "Verifique se VM está incluída em algum backup job (use get-backup-jobs)",
+                "Verifique se VM está incluída em algum backup job (use veeam_list_backup_jobs)",
                 "Configure backup job para esta VM se não houver",
                 "Revise retention policy dos jobs",
-                "Execute backup manual da VM (use start-backup-job)"
+                "Execute backup manual da VM (use veeam_start_backup_job)"
               ]
             }
           };
 
           const enrichedResponse = enrichListResponse(
             [],
-            "get-restore-points",
+            "veeam_list_restore_points",
             { vmName: vmName || null, vmId: finalVmId },
             { limit, skip: 0, total: 0 }
           );
@@ -174,7 +174,7 @@ export default function(server) {
         // Aplicar enriquecimento de lista
         const enrichedResponse = enrichListResponse(
           responseData.restorePoints,
-          "get-restore-points",
+          "veeam_list_restore_points",
           { vmName: vmName || null, vmId: finalVmId },
           restorePointsData.pagination
         );
@@ -188,17 +188,17 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(finalResponse, startTime));
 
       } catch (error) {
-        console.error('[get-restore-points] Erro:', error);
+        console.error('[veeam_list_restore_points] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-restore-points",
+          tool: "veeam_list_restore_points",
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
               "Verifique que vmName ou vmId está correto",
-              "Use get-backup-jobs para verificar VMs incluídas em jobs",
+              "Use veeam_list_backup_jobs para verificar VMs incluídas em jobs",
               "Confirme que VM existe no environment virtualizado",
               "Verifique permissões do usuário no VBR"
             ]
@@ -259,7 +259,7 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
       `1. Nenhuma VM possui backups no momento\n` +
       `2. Todos os restore points expiraram\n` +
       `3. Você não tem permissão para ver restore points\n\n` +
-      `Use get-backup-jobs para verificar jobs configurados.`
+      `Use veeam_list_backup_jobs para verificar jobs configurados.`
     );
   }
 
@@ -290,7 +290,7 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
       `Dicas:\n` +
       `- Tente buscar por parte do nome (ex: "servidor" ao invés de "servidor-producao-01")\n` +
       `- A busca ignora acentos e é case-insensitive\n` +
-      `- Use get-backup-jobs para ver quais VMs estão sendo backupeadas`
+      `- Use veeam_list_backup_jobs para ver quais VMs estão sendo backupeadas`
     );
   }
 

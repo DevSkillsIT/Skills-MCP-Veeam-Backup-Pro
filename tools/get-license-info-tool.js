@@ -11,7 +11,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add licensing information tool
   server.tool(
-    "get-license-info",
+    "veeam_get_license_info",
     { },
     async () => {
       try {
@@ -58,7 +58,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-license-info] Falha na autenticação automática:', authError);
+          console.error('[veeam_get_license_info] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",
@@ -87,7 +87,7 @@ export default function(server) {
 
   // Add tool to get detailed license workload information
   server.tool(
-    "get-license-workloads",
+    "veeam_get_license_workloads",
     { },
     async () => {
       try {
@@ -131,7 +131,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-license-workloads] Falha na autenticação automática:', authError);
+          console.error('[veeam_get_license_workloads] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",

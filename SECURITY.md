@@ -411,17 +411,17 @@ O Safety Guard protege **2 operações críticas**:
 
 | Operação | Descrição | Impacto |
 |----------|-----------|---------|
-| **start-backup-job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
-| **stop-backup-job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
+| **veeam_start_backup_job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
+| **veeam_stop_backup_job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
 
 **Por que proteger estas operações?**
 
-**start-backup-job:**
+**veeam_start_backup_job:**
 - Consumo inesperado de recursos (CPU, rede, storage)
 - Pode conflitar com janela de backup programada
 - Impacto em VMs de produção (snapshots, I/O)
 
-**stop-backup-job:**
+**veeam_stop_backup_job:**
 - Backup incompleto = ponto de restauração inválido
 - Pode deixar snapshots órfãos nas VMs
 - Interrompe cadeia de backups incrementais
@@ -494,7 +494,7 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params": {
-      "name": "start-backup-job",
+      "name": "veeam_start_backup_job",
       "arguments": {
         "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
         "fullBackup": false
@@ -519,7 +519,7 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params": {
-      "name": "start-backup-job",
+      "name": "veeam_start_backup_job",
       "arguments": {
         "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
         "fullBackup": false,
@@ -551,7 +551,7 @@ O Safety Guard executa as seguintes validações **em ordem**:
 **Erro 1: Confirmação Ausente**
 
 ```
-SAFETY GUARD: Operação "start-backup-job" requer confirmação explícita.
+SAFETY GUARD: Operação "veeam_start_backup_job" requer confirmação explícita.
 
 Descrição: Iniciar backup job sob demanda (fora do schedule)
 Alvo: Job urn:veeam:Job:00000000-0000-0000-0000-000000000000
@@ -573,7 +573,7 @@ Verifique se está usando o token correto.
 **Erro 3: Reason Muito Curto**
 
 ```
-SAFETY GUARD: Justificativa obrigatória para operação "stop-backup-job".
+SAFETY GUARD: Justificativa obrigatória para operação "veeam_stop_backup_job".
 
 A justificativa (reason) deve ter pelo menos 10 caracteres.
 Atual: 5 caracteres.
@@ -632,7 +632,7 @@ class SafetyGuard {
   "jobId": "urn:veeam:Job:abc-123-def",
   "result": "authorized",
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "reason": "Backup emergencial solicitado pelo cliente...",
     "reasonLength": 108,
     "guardEnabled": true
@@ -1084,7 +1084,7 @@ AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
 # ============================================================================
 # SAFETY GUARD - Proteção para operações críticas
 # ============================================================================
-# Habilita confirmação para start-backup-job e stop-backup-job
+# Habilita confirmação para veeam_start_backup_job e veeam_stop_backup_job
 # Valores: true (habilitado) ou false (desabilitado)
 MCP_SAFETY_GUARD=false
 
@@ -1321,7 +1321,7 @@ O sistema registra **todas** as operações críticas protegidas pelo Safety Gua
   "user": "mcp-user",
   "error": null,
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "operationDescription": "Iniciar backup job sob demanda (fora do schedule)",
     "reason": "Backup emergencial solicitado pelo cliente para recuperação de dados críticos",
     "reasonLength": 108,
@@ -1343,7 +1343,7 @@ grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
 # Filtrar por operação específica
 grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | \
-  jq 'select(.metadata.operation == "start-backup-job")'
+  jq 'select(.metadata.operation == "veeam_start_backup_job")'
 
 # Últimas 10 autorizações
 grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | tail -10 | jq
@@ -1693,7 +1693,7 @@ Este documento foi atualizado com **4 novas camadas de segurança** implementada
 
 #### 2. Safety Guard - Proteção para Operações Críticas ✅
 - **Implementado em:** `lib/safety-guard.js`
-- **Operações protegidas:** `start-backup-job`, `stop-backup-job`
+- **Operações protegidas:** `veeam_start_backup_job`, `veeam_stop_backup_job`
 - **Validações:** Token + justificativa obrigatória (10-1000 chars)
 - **Benefício:** Previne operações acidentais e exige documentação de mudanças
 

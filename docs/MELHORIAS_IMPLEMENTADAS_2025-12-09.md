@@ -20,11 +20,11 @@ Este documento descreve as melhorias substanciais implementadas no **MCP Veeam B
 - **Sistema de auditoria** completo para compliance e troubleshooting
 
 **Impacto para Operações MSP:**
-- ✅ **Morning Checklist Automatizado**: `get-failed-sessions` com filtro por período
-- ✅ **Monitoramento Real-Time**: `get-running-sessions` com estatísticas e progresso
-- ✅ **Compliance 3-2-1**: `get-backup-copy-jobs` para validação de off-site
-- ✅ **Controle Sob Demanda**: `start-backup-job` e `stop-backup-job` com validação
-- ✅ **Troubleshooting Avançado**: `get-session-log` para diagnóstico detalhado
+- ✅ **Morning Checklist Automatizado**: `veeam_list_failed_sessions` com filtro por período
+- ✅ **Monitoramento Real-Time**: `veeam_list_running_sessions` com estatísticas e progresso
+- ✅ **Compliance 3-2-1**: `veeam_list_backup_copy_jobs` para validação de off-site
+- ✅ **Controle Sob Demanda**: `veeam_start_backup_job` e `veeam_stop_backup_job` com validação
+- ✅ **Troubleshooting Avançado**: `veeam_get_session_log` para diagnóstico detalhado
 
 **Benefícios de Qualidade:**
 - 🔒 **Validação de Operações**: Previne comandos inválidos com validadores inteligentes
@@ -40,14 +40,14 @@ Este documento descreve as melhorias substanciais implementadas no **MCP Veeam B
 
 | Arquivo | Localização | Linhas | Propósito | Status |
 |---------|-------------|--------|-----------|--------|
-| `get-running-sessions-tool.js` | `/tools/` | ~251 | Monitoramento real-time de backups em execução | ✅ Criado |
-| `get-failed-sessions-tool.js` | `/tools/` | ~266 | Morning checklist MSP - sessões falhadas | ✅ Criado |
-| `get-backup-copy-jobs-tool.js` | `/tools/` | ~180 | Validação compliance 3-2-1 (off-site backups) | ✅ Criado |
-| `start-backup-job-tool.js` | `/tools/` | ~192 | Iniciar job sob demanda (POST) | ✅ Criado |
-| `stop-backup-job-tool.js` | `/tools/` | ~165 | Interromper job em execução (POST) | ✅ Criado |
-| `get-restore-points-tool.js` | `/tools/` | ~200 | Listar restore points de VMs específicas | ✅ Criado |
-| `get-job-schedule-tool.js` | `/tools/` | ~155 | Detalhes de agendamento de jobs | ✅ Criado |
-| `get-session-log-tool.js` | `/tools/` | ~240 | Logs detalhados de sessions (troubleshooting) | ✅ Criado |
+| `veeam_list_running_sessions-tool.js` | `/tools/` | ~251 | Monitoramento real-time de backups em execução | ✅ Criado |
+| `veeam_list_failed_sessions-tool.js` | `/tools/` | ~266 | Morning checklist MSP - sessões falhadas | ✅ Criado |
+| `veeam_list_backup_copy_jobs-tool.js` | `/tools/` | ~180 | Validação compliance 3-2-1 (off-site backups) | ✅ Criado |
+| `veeam_start_backup_job-tool.js` | `/tools/` | ~192 | Iniciar job sob demanda (POST) | ✅ Criado |
+| `veeam_stop_backup_job-tool.js` | `/tools/` | ~165 | Interromper job em execução (POST) | ✅ Criado |
+| `veeam_list_restore_points-tool.js` | `/tools/` | ~200 | Listar restore points de VMs específicas | ✅ Criado |
+| `veeam_get_backup_job_schedule-tool.js` | `/tools/` | ~155 | Detalhes de agendamento de jobs | ✅ Criado |
+| `veeam_get_session_log-tool.js` | `/tools/` | ~240 | Logs detalhados de sessions (troubleshooting) | ✅ Criado |
 | `retry-failed-job-tool.js` | `/tools/` | ~175 | Re-executar job que falhou (bonus) | ⚠️ Planejado |
 
 ### Bibliotecas Auxiliares (5 arquivos)
@@ -73,7 +73,7 @@ Este documento descreve as melhorias substanciais implementadas no **MCP Veeam B
 
 ## 🔧 Descrição Detalhada das Tools
 
-### 1. `get-running-sessions` (GET - Monitoramento Real-Time)
+### 1. `veeam_list_running_sessions` (GET - Monitoramento Real-Time)
 
 **Endpoint API:** `GET /api/v1/sessions?stateFilter=Working`
 **Método HTTP:** GET
@@ -143,7 +143,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "get-running-sessions",
+      "name": "veeam_list_running_sessions",
       "arguments": {
         "limit": 50
       }
@@ -159,7 +159,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 2. `get-failed-sessions` (GET - Morning Checklist MSP)
+### 2. `veeam_list_failed_sessions` (GET - Morning Checklist MSP)
 
 **Endpoint API:** `GET /api/v1/sessions?resultFilter=Failed`
 **Método HTTP:** GET
@@ -225,7 +225,7 @@ curl -X POST http://localhost:8825/mcp \
   ],
   "_troubleshooting": {
     "tips": [
-      "Verifique logs detalhados de cada session com get-session-log",
+      "Verifique logs detalhados de cada session com veeam_get_session_log",
       "Analise padrões nos top erros para identificar problemas comuns",
       "Para erros de snapshot: verifique VMware Tools nas VMs"
     ]
@@ -244,7 +244,7 @@ curl -X POST http://localhost:8825/mcp \
   "info": {
     "meaning": "Isso é uma boa notícia! Não há falhas recentes.",
     "nextSteps": [
-      "Verifique sessions com warnings: get-backup-sessions com resultFilter=Warning"
+      "Verifique sessions com warnings: veeam_list_backup_sessions com resultFilter=Warning"
     ]
   }
 }
@@ -259,7 +259,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "get-failed-sessions",
+      "name": "veeam_list_failed_sessions",
       "arguments": {
         "limit": 100,
         "hours": 24
@@ -276,7 +276,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 3. `get-backup-copy-jobs` (GET - Compliance 3-2-1)
+### 3. `veeam_list_backup_copy_jobs` (GET - Compliance 3-2-1)
 
 **Endpoint API:** `GET /api/v1/jobs?typeFilter=BackupCopy`
 **Método HTTP:** GET
@@ -337,7 +337,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "get-backup-copy-jobs",
+      "name": "veeam_list_backup_copy_jobs",
       "arguments": {
         "includeDisabled": false
       }
@@ -353,7 +353,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 4. `start-backup-job` (POST - Controle Sob Demanda)
+### 4. `veeam_start_backup_job` (POST - Controle Sob Demanda)
 
 **Endpoint API:** `POST /api/v1/jobs/{id}/start`
 **Método HTTP:** POST
@@ -386,7 +386,7 @@ curl -X POST http://localhost:8825/mcp \
 ```json
 {
   "success": true,
-  "operation": "start-backup-job",
+  "operation": "veeam_start_backup_job",
   "summary": {
     "message": "✅ Job 'Backup Servers Prod' iniciado com sucesso",
     "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -396,8 +396,8 @@ curl -X POST http://localhost:8825/mcp \
     "timestamp": "2025-12-09T10:30:00.000Z"
   },
   "nextSteps": {
-    "monitorProgress": "Use get-running-sessions para monitorar progresso",
-    "checkLogs": "Use get-session-log com sessionId: 7b8c9d0e-1234-5678-90ab-cdef12345678"
+    "monitorProgress": "Use veeam_list_running_sessions para monitorar progresso",
+    "checkLogs": "Use veeam_get_session_log com sessionId: 7b8c9d0e-1234-5678-90ab-cdef12345678"
   },
   "notes": [
     "Incremental backup é mais rápido",
@@ -414,9 +414,9 @@ curl -X POST http://localhost:8825/mcp \
   "message": "Job 'Backup Servers Prod' não pode ser iniciado no estado atual.\n\nEstado atual: Working - Job em execução ativa\nTipo: Backup\n\nApenas jobs no estado 'Stopped' (0) podem ser iniciados manualmente.\n\nPossíveis causas:\n- Job já está em execução (state=3)\n- Job está iniciando (state=1)\n\nAguarde o job terminar ou pare-o antes de tentar iniciar novamente.",
   "troubleshooting": {
     "tips": [
-      "Verifique que o jobId está correto (use get-backup-jobs)",
+      "Verifique que o jobId está correto (use veeam_list_backup_jobs)",
       "Confirme que o job está no estado 'Stopped' (0)",
-      "Use get-job-details para verificar configuração do job"
+      "Use veeam_get_backup_job_details para verificar configuração do job"
     ]
   }
 }
@@ -431,7 +431,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "start-backup-job",
+      "name": "veeam_start_backup_job",
       "arguments": {
         "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "fullBackup": false
@@ -447,7 +447,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "start-backup-job",
+      "name": "veeam_start_backup_job",
       "arguments": {
         "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "fullBackup": true
@@ -461,7 +461,7 @@ curl -X POST http://localhost:8825/mcp \
 ```json
 {
   "timestamp": "2025-12-09T10:30:00.000Z",
-  "operation": "start-backup-job",
+  "operation": "veeam_start_backup_job",
   "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "jobName": "Backup Servers Prod",
   "result": "success",
@@ -486,7 +486,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 5. `stop-backup-job` (POST - Interromper Execução)
+### 5. `veeam_stop_backup_job` (POST - Interromper Execução)
 
 **Endpoint API:** `POST /api/v1/jobs/{id}/stop`
 **Método HTTP:** POST
@@ -516,7 +516,7 @@ curl -X POST http://localhost:8825/mcp \
 ```json
 {
   "success": true,
-  "operation": "stop-backup-job",
+  "operation": "veeam_stop_backup_job",
   "summary": {
     "message": "✅ Job 'Backup Servers Prod' parado com sucesso",
     "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -540,7 +540,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "stop-backup-job",
+      "name": "veeam_stop_backup_job",
       "arguments": {
         "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
       }
@@ -549,7 +549,7 @@ curl -X POST http://localhost:8825/mcp \
   }'
 ```
 
-**🔒 Audit Logging:** Similar ao `start-backup-job`
+**🔒 Audit Logging:** Similar ao `veeam_start_backup_job`
 
 **⚠️ AVISOS DE SEGURANÇA:**
 - Operação pode resultar em restore point incompleto
@@ -558,7 +558,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 6. `get-restore-points` (GET - Restore Points de VMs)
+### 6. `veeam_list_restore_points` (GET - Restore Points de VMs)
 
 **Endpoint API:** `GET /api/v1/backupObjects/{objectId}/restorePoints`
 **Método HTTP:** GET
@@ -574,7 +574,7 @@ curl -X POST http://localhost:8825/mcp \
 ```javascript
 {
   vmId: z.string()
-    .describe("ID da VM (obtido via get-backup-jobs)"),
+    .describe("ID da VM (obtido via veeam_list_backup_jobs)"),
   limit: z.number().min(1).max(500).default(100)
     .describe("Máximo de restore points a retornar")
 }
@@ -609,7 +609,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 7. `get-job-schedule` (GET - Detalhes de Scheduling)
+### 7. `veeam_get_backup_job_schedule` (GET - Detalhes de Scheduling)
 
 **Endpoint API:** `GET /api/v1/jobs/{id}/scheduleOptions`
 **Método HTTP:** GET
@@ -637,7 +637,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 8. `get-session-log` (GET - Troubleshooting Avançado)
+### 8. `veeam_get_session_log` (GET - Troubleshooting Avançado)
 
 **Endpoint API:** `GET /api/v1/sessions/{id}/logs`
 **Método HTTP:** GET
@@ -653,7 +653,7 @@ curl -X POST http://localhost:8825/mcp \
 ```javascript
 {
   sessionId: z.string()
-    .describe("ID da session (obtido via get-backup-sessions)"),
+    .describe("ID da session (obtido via veeam_list_backup_sessions)"),
   limit: z.number().min(1).max(10000).default(1000)
     .describe("Máximo de linhas de log"),
   levelFilter: z.enum(["Info", "Warning", "Error"]).optional()
@@ -692,7 +692,7 @@ curl -X POST http://localhost:8825/mcp \
 
 **Endpoint API:** `POST /api/v1/jobs/{id}/retry`
 **Método HTTP:** POST
-**Descrição:** Re-executa um job que falhou, equivalente a `start-backup-job` mas específico para falhas.
+**Descrição:** Re-executa um job que falhou, equivalente a `veeam_start_backup_job` mas específico para falhas.
 
 **Status:** ⚠️ Planejado (não implementado ainda)
 
@@ -769,8 +769,8 @@ const enrichedSession = enrichSessionData(rawSession);
 ```
 
 **Integração com Tools:**
-- `get-running-sessions`: Usa `formatProgress` e `calculateSessionStats`
-- `get-failed-sessions`: Usa `enrichSessionData` e `formatDateTime`
+- `veeam_list_running_sessions`: Usa `formatProgress` e `calculateSessionStats`
+- `veeam_list_failed_sessions`: Usa `enrichSessionData` e `formatDateTime`
 - Todas as tools GET: Usam `enrichSessionData` ou `enrichJobData`
 
 ---
@@ -791,7 +791,7 @@ const enrichedSession = enrichSessionData(rawSession);
 
 **Formato do Log (JSON Lines):**
 ```json
-{"timestamp":"2025-12-09T10:30:00.000Z","operation":"start-backup-job","jobId":"3fa85f64-5717-4562-b3fc-2c963f66afa6","jobName":"Backup Servers Prod","result":"success","user":"mcp-user","error":null,"metadata":{"fullBackup":false,"sessionId":"7b8c9d0e-1234-5678-90ab-cdef12345678"},"environment":{"veeamHost":"vbr.skillsit.local","mcpVersion":"1.0.0"}}
+{"timestamp":"2025-12-09T10:30:00.000Z","operation":"veeam_start_backup_job","jobId":"3fa85f64-5717-4562-b3fc-2c963f66afa6","jobName":"Backup Servers Prod","result":"success","user":"mcp-user","error":null,"metadata":{"fullBackup":false,"sessionId":"7b8c9d0e-1234-5678-90ab-cdef12345678"},"environment":{"veeamHost":"vbr.skillsit.local","mcpVersion":"1.0.0"}}
 ```
 
 **Localização do Arquivo:**
@@ -804,7 +804,7 @@ const enrichedSession = enrichSessionData(rawSession);
 import { logOperation } from './audit-logger.js';
 
 // Registrar sucesso
-await logOperation('start-backup-job', {
+await logOperation('veeam_start_backup_job', {
   jobId: 'xxx',
   jobName: 'Backup Prod',
   result: 'success',
@@ -812,7 +812,7 @@ await logOperation('start-backup-job', {
 });
 
 // Registrar falha
-await logOperation('start-backup-job', {
+await logOperation('veeam_start_backup_job', {
   jobId: 'xxx',
   jobName: 'Backup Prod',
   result: 'failed',
@@ -826,7 +826,7 @@ await logOperation('start-backup-job', {
 tail -10 /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
 # Filtrar por operação específica
-grep "start-backup-job" /opt/mcp-servers/veeam-backup/logs/audit.log | jq
+grep "veeam_start_backup_job" /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
 # Contar sucessos vs falhas
 grep "\"result\":\"success\"" audit.log | wc -l
@@ -837,8 +837,8 @@ grep "2025-12-09" audit.log | jq
 ```
 
 **Integração com Tools:**
-- `start-backup-job`: Loga sucesso e falha
-- `stop-backup-job`: Loga sucesso e falha
+- `veeam_start_backup_job`: Loga sucesso e falha
+- `veeam_stop_backup_job`: Loga sucesso e falha
 - Futuras tools POST: Devem usar `logOperation`
 
 ---
@@ -891,8 +891,8 @@ Aguarde o job terminar ou pare-o antes de tentar iniciar novamente.
 ```
 
 **Integração com Tools:**
-- `start-backup-job`: Usa `validateJobOperation(jobId, 'start')`
-- `stop-backup-job`: Usa `validateJobOperation(jobId, 'stop')`
+- `veeam_start_backup_job`: Usa `validateJobOperation(jobId, 'start')`
+- `veeam_stop_backup_job`: Usa `validateJobOperation(jobId, 'stop')`
 - Todas tools com parâmetro ID: Usam `validateVeeamId`
 
 ---
@@ -927,7 +927,7 @@ const startTime = Date.now();
 
 const enrichedResponse = enrichListResponse(
   sessions,
-  "get-running-sessions",
+  "veeam_list_running_sessions",
   { stateFilter: "Working" },
   { limit: 100, skip: 0, total: 3 }
 );
@@ -939,7 +939,7 @@ return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 ```json
 {
   "_metadata": {
-    "tool": "get-running-sessions",
+    "tool": "veeam_list_running_sessions",
     "timestamp": "2025-12-09T10:30:00.000Z",
     "apiVersion": "1.2-rev1",
     "server": "vbr.skillsit.local",
@@ -973,7 +973,7 @@ return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 
 **Campos Obrigatórios:**
 - `timestamp`: ISO 8601 UTC
-- `operation`: Nome da tool (ex: "start-backup-job")
+- `operation`: Nome da tool (ex: "veeam_start_backup_job")
 - `jobId`: ID do recurso afetado
 - `jobName`: Nome do recurso
 - `result`: "success" | "failed" | "unknown"
@@ -993,7 +993,7 @@ return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 ```json
 {
   "timestamp": "2025-12-09T10:30:15.234Z",
-  "operation": "start-backup-job",
+  "operation": "veeam_start_backup_job",
   "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "jobName": "Backup Servers Prod",
   "result": "success",
@@ -1018,8 +1018,8 @@ return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 # Ver últimas 10 operações
 tail -10 /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
-# Ver todas as operações de start-backup-job
-grep "start-backup-job" audit.log | jq
+# Ver todas as operações de veeam_start_backup_job
+grep "veeam_start_backup_job" audit.log | jq
 
 # Contar sucessos vs falhas hoje
 grep "2025-12-09" audit.log | grep "\"result\":\"success\"" | wc -l
@@ -1092,7 +1092,7 @@ Aguarde o job terminar ou pare-o antes de tentar iniciar novamente."
 ```json
 {
   "error": true,
-  "operation": "start-backup-job",
+  "operation": "veeam_start_backup_job",
   "message": "Descrição legível do erro",
   "context": {
     "jobId": "...",
@@ -1138,7 +1138,7 @@ Aguarde o job terminar ou pare-o antes de tentar iniciar novamente."
   "progressPercent": 45,
   "progressFormatted": "████░░░░░░ 45%",
   "_metadata": {
-    "tool": "get-running-sessions",
+    "tool": "veeam_list_running_sessions",
     "timestamp": "2025-12-09T10:30:00.000Z",
     "apiVersion": "1.2-rev1"
   }
@@ -1185,7 +1185,7 @@ Aguarde o job terminar ou pare-o antes de tentar iniciar novamente."
 # Verificar backups em execução
 curl -X POST http://localhost:8825/mcp \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get-running-sessions","arguments":{}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_list_running_sessions","arguments":{}},"id":1}'
 ```
 
 **2. Morning Checklist:**
@@ -1193,7 +1193,7 @@ curl -X POST http://localhost:8825/mcp \
 # Falhas nas últimas 24h
 curl -X POST http://localhost:8825/mcp \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get-failed-sessions","arguments":{"hours":24}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_list_failed_sessions","arguments":{"hours":24}},"id":1}'
 ```
 
 **3. Compliance 3-2-1:**
@@ -1201,7 +1201,7 @@ curl -X POST http://localhost:8825/mcp \
 # Verificar backup copy jobs
 curl -X POST http://localhost:8825/mcp \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get-backup-copy-jobs","arguments":{}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_list_backup_copy_jobs","arguments":{}},"id":1}'
 ```
 
 ### Tools POST (⚠️ Testar com Cuidado em Produção)
@@ -1216,7 +1216,7 @@ curl -X POST http://localhost:8825/mcp \
 ```bash
 curl -X POST http://localhost:8825/mcp \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get-backup-jobs","arguments":{}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_list_backup_jobs","arguments":{}},"id":1}'
 
 # Anote um jobId de um job parado
 ```
@@ -1230,7 +1230,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"start-backup-job",
+      "name":"veeam_start_backup_job",
       "arguments":{
         "jobId":"JOB_ID_AQUI",
         "fullBackup":false
@@ -1246,30 +1246,30 @@ curl -X POST http://localhost:8825/mcp \
 tail -10 /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
 # Ver todas as operações POST
-grep -E "(start-backup-job|stop-backup-job)" audit.log | jq
+grep -E "(veeam_start_backup_job|veeam_stop_backup_job)" audit.log | jq
 ```
 
 ### Checklist de Validação
 
 #### Tools GET (9 tools)
 
-- [ ] `get-running-sessions` retorna sessions em execução
-- [ ] `get-failed-sessions` retorna falhas (ou mensagem de sucesso se não houver)
-- [ ] `get-backup-copy-jobs` retorna jobs de backup copy
-- [ ] `get-restore-points` retorna restore points de uma VM
-- [ ] `get-job-schedule` retorna schedule de um job
-- [ ] `get-session-log` retorna logs de uma session
+- [ ] `veeam_list_running_sessions` retorna sessions em execução
+- [ ] `veeam_list_failed_sessions` retorna falhas (ou mensagem de sucesso se não houver)
+- [ ] `veeam_list_backup_copy_jobs` retorna jobs de backup copy
+- [ ] `veeam_list_restore_points` retorna restore points de uma VM
+- [ ] `veeam_get_backup_job_schedule` retorna schedule de um job
+- [ ] `veeam_get_session_log` retorna logs de uma session
 - [ ] Todas as respostas têm campos `*Formatted`
 - [ ] Todas as respostas têm `_metadata` com timestamp
 
 #### Tools POST (2 tools) - ⚠️ Produção
 
-- [ ] `start-backup-job` valida jobId antes de executar
-- [ ] `start-backup-job` rejeita job já em execução
-- [ ] `start-backup-job` loga operação no audit.log
-- [ ] `stop-backup-job` valida jobId antes de executar
-- [ ] `stop-backup-job` rejeita job já parado
-- [ ] `stop-backup-job` loga operação no audit.log
+- [ ] `veeam_start_backup_job` valida jobId antes de executar
+- [ ] `veeam_start_backup_job` rejeita job já em execução
+- [ ] `veeam_start_backup_job` loga operação no audit.log
+- [ ] `veeam_stop_backup_job` valida jobId antes de executar
+- [ ] `veeam_stop_backup_job` rejeita job já parado
+- [ ] `veeam_stop_backup_job` loga operação no audit.log
 
 #### Bibliotecas (5 libs)
 
@@ -1304,7 +1304,7 @@ grep -E "(start-backup-job|stop-backup-job)" audit.log | jq
 | **Morning Checklist** | Manual (login VBR) | Automatizado (1 comando) | 10min → 30s |
 | **Monitoramento Real-Time** | Dashboard VBR | API call | Integração com dashboards |
 | **Compliance 3-2-1** | Auditoria manual | Validação automática | Relatórios em segundos |
-| **Troubleshooting** | Login VBR + clicks | `get-session-log` | Diagnóstico remoto |
+| **Troubleshooting** | Login VBR + clicks | `veeam_get_session_log` | Diagnóstico remoto |
 | **Controle de Jobs** | Console VBR only | API POST | Automação completa |
 
 ---
@@ -1314,20 +1314,20 @@ grep -E "(start-backup-job|stop-backup-job)" audit.log | jq
 ### 1. Validação em Produção (Prioridade Alta)
 
 **Fase 1: Tools GET (Seguras)**
-- [ ] Testar `get-running-sessions` em horário de backup
-- [ ] Testar `get-failed-sessions` com diferentes períodos
-- [ ] Testar `get-backup-copy-jobs` em múltiplos clientes
+- [ ] Testar `veeam_list_running_sessions` em horário de backup
+- [ ] Testar `veeam_list_failed_sessions` com diferentes períodos
+- [ ] Testar `veeam_list_backup_copy_jobs` em múltiplos clientes
 - [ ] Validar formatação de datas, bytes, duração
 
 **Fase 2: Tools POST (Com Cuidado)**
-- [ ] Testar `start-backup-job` em job de teste
-- [ ] Testar `stop-backup-job` em job de teste
+- [ ] Testar `veeam_start_backup_job` em job de teste
+- [ ] Testar `veeam_stop_backup_job` em job de teste
 - [ ] Verificar audit log após cada operação
 - [ ] Validar que validações previnem erros
 
 **Fase 3: Integração**
 - [ ] Integrar com dashboards existentes
-- [ ] Criar alertas baseados em `get-failed-sessions`
+- [ ] Criar alertas baseados em `veeam_list_failed_sessions`
 - [ ] Automatizar morning checklist
 - [ ] Documentar workflows MSP
 
@@ -1338,29 +1338,29 @@ grep -E "(start-backup-job|stop-backup-job)" audit.log | jq
 **Cenário 1: Morning Checklist Automatizado**
 ```bash
 # Executar todo dia às 8h
-get-failed-sessions --hours 24
+veeam_list_failed_sessions --hours 24
 # Se count > 0, enviar alerta para equipe
 ```
 
 **Cenário 2: Monitoramento Real-Time**
 ```bash
 # Dashboard atualizado a cada 5min
-get-running-sessions
+veeam_list_running_sessions
 # Exibir progresso médio e tempo estimado
 ```
 
 **Cenário 3: Compliance Check Semanal**
 ```bash
 # Executar toda sexta às 17h
-get-backup-copy-jobs
+veeam_list_backup_copy_jobs
 # Verificar que todos os jobs estão enabled
 ```
 
 **Cenário 4: Backup Sob Demanda**
 ```bash
 # Cliente solicita backup antes de mudança
-start-backup-job --jobId XXX --fullBackup true
-# Monitorar com get-running-sessions
+veeam_start_backup_job --jobId XXX --fullBackup true
+# Monitorar com veeam_list_running_sessions
 ```
 
 ### 3. Possíveis Expansões Futuras
@@ -1430,14 +1430,14 @@ start-backup-job --jobId XXX --fullBackup true
 ```
 veeam-backup/
 ├── tools/
-│   ├── get-running-sessions-tool.js
-│   ├── get-failed-sessions-tool.js
-│   ├── get-backup-copy-jobs-tool.js
-│   ├── start-backup-job-tool.js
-│   ├── stop-backup-job-tool.js
-│   ├── get-restore-points-tool.js
-│   ├── get-job-schedule-tool.js
-│   └── get-session-log-tool.js
+│   ├── veeam_list_running_sessions-tool.js
+│   ├── veeam_list_failed_sessions-tool.js
+│   ├── veeam_list_backup_copy_jobs-tool.js
+│   ├── veeam_start_backup_job-tool.js
+│   ├── veeam_stop_backup_job-tool.js
+│   ├── veeam_list_restore_points-tool.js
+│   ├── veeam_get_backup_job_schedule-tool.js
+│   └── veeam_get_session_log-tool.js
 ├── lib/
 │   ├── veeam-dictionaries.js
 │   ├── format-helpers.js
@@ -1475,7 +1475,7 @@ veeam-backup/
    git commit -m "feat(veeam): implementar 9 novas tools e 5 libs auxiliares
 
    - Tools GET: running-sessions, failed-sessions, backup-copy-jobs, restore-points, job-schedule, session-log
-   - Tools POST: start-backup-job, stop-backup-job (com validação)
+   - Tools POST: veeam_start_backup_job, veeam_stop_backup_job (com validação)
    - Libs: dictionaries, format-helpers, audit-logger, validation-helpers, response-enricher
    - Sistema de auditoria completo (JSON structured logging)
    - Validação pre-execution e mensagens de erro contextuais

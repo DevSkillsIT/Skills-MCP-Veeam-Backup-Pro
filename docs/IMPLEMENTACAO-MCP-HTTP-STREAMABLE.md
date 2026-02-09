@@ -188,9 +188,9 @@ app.get('/mcp', mcpAuthMiddleware, (req, res) => {});
 ### Problema 3: Nomenclatura Inconsistente de Tools
 
 **Sintoma:** 3 testes falhando:
-- `get-server-info` → "Tool não está carregada"
-- `get-backup-jobs` → "Tool não está carregada"
-- `get-license-info` → "Tool não está carregada"
+- `veeam_get_server_info` → "Tool não está carregada"
+- `veeam_list_backup_jobs` → "Tool não está carregada"
+- `veeam_get_license_info` → "Tool não está carregada"
 
 **Causa Raiz:** Arquivos de tools sem prefixo "get-" mas `tools/list` retornando com prefixo
 
@@ -198,19 +198,19 @@ app.get('/mcp', mcpAuthMiddleware, (req, res) => {});
 
 | Arquivo Antigo | Arquivo Novo |
 |----------------|--------------|
-| `license-tools.js` | `get-license-info-tool.js` |
-| `backup-jobs-tool.js` | `get-backup-jobs-tool.js` |
-| `backup-proxies-tool.js` | `get-backup-proxies-tool.js` |
-| `backup-repositories-tool.js` | `get-backup-repositories-tool.js` |
-| `backup-sessions-tool.js` | `get-backup-sessions-tool.js` |
-| `job-details-tool.js` | `get-job-details-tool.js` |
-| `server-info-tool.js` | `get-server-info-tool.js` |
+| `license-tools.js` | `veeam_get_license_info-tool.js` |
+| `backup-jobs-tool.js` | `veeam_list_backup_jobs-tool.js` |
+| `backup-proxies-tool.js` | `veeam_list_backup_proxies-tool.js` |
+| `backup-repositories-tool.js` | `veeam_list_backup_repositories-tool.js` |
+| `backup-sessions-tool.js` | `veeam_list_backup_sessions-tool.js` |
+| `job-details-tool.js` | `veeam_get_backup_job_details-tool.js` |
+| `server-info-tool.js` | `veeam_get_server_info-tool.js` |
 
 **Lógica de nomeação:**
 ```javascript
 // vbr-mcp-server.js:95
 const toolName = file.replace('.js', '').replace('-tool', '');
-// Exemplo: get-backup-jobs-tool.js → get-backup-jobs
+// Exemplo: veeam_list_backup_jobs-tool.js → veeam_list_backup_jobs
 ```
 
 ---
@@ -228,9 +228,9 @@ const toolName = file.replace('.js', '').replace('-tool', '');
 | 3 | Auth - Token inválido | ✅ PASS | Corretamente retorna 401 |
 | 4 | MCP Initialize | ✅ PASS | Handshake retorna protocol 2024-11-05 |
 | 5 | Tools List | ✅ PASS | Retorna 15 ferramentas |
-| 6 | Tool Call - get-server-info | ✅ PASS | Executa sem parâmetros |
-| 7 | Tool Call - get-backup-jobs | ✅ PASS | Executa com limit=5 |
-| 8 | Tool Call - get-license-info | ✅ PASS | Retorna dados de licença |
+| 6 | Tool Call - veeam_get_server_info | ✅ PASS | Executa sem parâmetros |
+| 7 | Tool Call - veeam_list_backup_jobs | ✅ PASS | Executa com limit=5 |
+| 8 | Tool Call - veeam_get_license_info | ✅ PASS | Retorna dados de licença |
 | 9 | Tool inexistente | ✅ PASS | Retorna erro correto |
 | 10 | Session Management | ✅ PASS | Header Mcp-Session-Id presente |
 | 11 | Método não suportado | ✅ PASS | Retorna erro JSON-RPC -32601 |
@@ -243,21 +243,21 @@ const toolName = file.replace('.js', '').replace('-tool', '');
 
 | # | Tool | Testada | Status |
 |---|------|---------|--------|
-| 1 | get-server-info | ✅ | PASS |
-| 2 | get-license-info | ✅ | PASS |
-| 3 | get-backup-jobs | ✅ | PASS |
-| 4 | get-backup-sessions | ✅ | PASS |
-| 5 | get-backup-proxies | ✅ | PASS |
-| 6 | get-backup-repositories | ✅ | PASS |
-| 7 | get-running-sessions | ✅ | PASS |
-| 8 | get-failed-sessions | ✅ | PASS |
-| 9 | get-backup-copy-jobs | ✅ | PASS |
-| 10 | get-restore-points | ✅ | PASS |
-| 11 | get-job-details | ⚠️ | SKIP - Requer jobId |
-| 12 | get-job-schedule | ⚠️ | SKIP - Requer jobId |
-| 13 | get-session-log | ⚠️ | SKIP - Requer sessionId |
-| 14 | start-backup-job | ⚠️ | SKIP - Altera estado |
-| 15 | stop-backup-job | ⚠️ | SKIP - Altera estado |
+| 1 | veeam_get_server_info | ✅ | PASS |
+| 2 | veeam_get_license_info | ✅ | PASS |
+| 3 | veeam_list_backup_jobs | ✅ | PASS |
+| 4 | veeam_list_backup_sessions | ✅ | PASS |
+| 5 | veeam_list_backup_proxies | ✅ | PASS |
+| 6 | veeam_list_backup_repositories | ✅ | PASS |
+| 7 | veeam_list_running_sessions | ✅ | PASS |
+| 8 | veeam_list_failed_sessions | ✅ | PASS |
+| 9 | veeam_list_backup_copy_jobs | ✅ | PASS |
+| 10 | veeam_list_restore_points | ✅ | PASS |
+| 11 | veeam_get_backup_job_details | ⚠️ | SKIP - Requer jobId |
+| 12 | veeam_get_backup_job_schedule | ⚠️ | SKIP - Requer jobId |
+| 13 | veeam_get_session_log | ⚠️ | SKIP - Requer sessionId |
+| 14 | veeam_start_backup_job | ⚠️ | SKIP - Altera estado |
+| 15 | veeam_stop_backup_job | ⚠️ | SKIP - Altera estado |
 
 **Ferramentas puladas:** 5 (requerem IDs específicos ou alteram estado do sistema)
 

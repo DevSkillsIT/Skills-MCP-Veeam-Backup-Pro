@@ -17,7 +17,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-session-log",
+    "veeam_get_session_log",
     {
       sessionId: z.string().describe("ID da session para obter logs (UUID)"),
       logLevel: z.enum(["All", "Info", "Warning", "Error", "Debug"]).default("All").describe("Filtrar por nível de log (padrão: All)")
@@ -31,10 +31,10 @@ export default function(server) {
         validateVeeamId(sessionId, "session");
 
         // Validar que session existe
-        console.log(`[get-session-log] Validando session...`);
+        console.log(`[veeam_get_session_log] Validando session...`);
         const session = await validateSessionExists(sessionId);
 
-        console.log(`[get-session-log] ✅ Session "${session.name}" validada`);
+        console.log(`[veeam_get_session_log] ✅ Session "${session.name}" validada`);
 
         // Autenticação
         const { host, port, token, apiVersion } = await ensureAuthenticated();
@@ -43,7 +43,7 @@ export default function(server) {
         // Endpoint: GET /api/v1/sessions/{id}/log
         let logUrl = `https://${host}:${port}/api/v1/sessions/${sessionId}/log`;
 
-        console.log(`[get-session-log] Tentando endpoint: ${logUrl}`);
+        console.log(`[veeam_get_session_log] Tentando endpoint: ${logUrl}`);
 
         let response = await fetch(logUrl, {
           method: 'GET',
@@ -60,7 +60,7 @@ export default function(server) {
 
         // Se endpoint /log não existir (404), usar fallback para session details
         if (!response.ok && response.status === 404) {
-          console.log(`[get-session-log] Endpoint /log não disponível. Usando fallback (session details)`);
+          console.log(`[veeam_get_session_log] Endpoint /log não disponível. Usando fallback (session details)`);
           logSource = "session-messages";
 
           // Fallback: GET /api/v1/sessions/{id} e extrair campo 'messages' ou 'logs'
@@ -101,13 +101,13 @@ export default function(server) {
           logEntries = logData.data || logData.logs || [];
         }
 
-        console.log(`[get-session-log] Recebido: ${logEntries.length} entrada(s) de log`);
+        console.log(`[veeam_get_session_log] Recebido: ${logEntries.length} entrada(s) de log`);
 
         // Filtrar por logLevel se especificado
         if (logLevel !== "All") {
           const originalCount = logEntries.length;
           logEntries = logEntries.filter(entry => entry.level === logLevel);
-          console.log(`[get-session-log] Filtrado de ${originalCount} para ${logEntries.length} (level: ${logLevel})`);
+          console.log(`[veeam_get_session_log] Filtrado de ${originalCount} para ${logEntries.length} (level: ${logLevel})`);
         }
 
         // Verificar se há logs
@@ -135,7 +135,7 @@ export default function(server) {
               ],
               alternatives: [
                 "Tente logLevel='All' para ver todos os logs",
-                "Use get-backup-sessions para verificar estado da session",
+                "Use veeam_list_backup_sessions para verificar estado da session",
                 "Verifique VBR console para logs completos"
               ]
             }
@@ -205,7 +205,7 @@ export default function(server) {
         // Enriquecer resposta
         const enrichedResponse = enrichResponse(
           responseData,
-          "get-session-log",
+          "veeam_get_session_log",
           {
             sessionId: sessionId,
             logLevel: logLevel,
@@ -216,19 +216,19 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 
       } catch (error) {
-        console.error('[get-session-log] Erro:', error);
+        console.error('[veeam_get_session_log] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-session-log",
+          tool: "veeam_get_session_log",
           sessionId: sessionId,
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
-              "Verifique que o sessionId está correto (use get-backup-sessions)",
+              "Verifique que o sessionId está correto (use veeam_list_backup_sessions)",
               "Confirme que a session existe e não expirou",
-              "Use get-backup-sessions para listar sessions disponíveis",
+              "Use veeam_list_backup_sessions para listar sessions disponíveis",
               "Logs podem ter sido rotacionados (verificar retention)"
             ]
           }
@@ -249,13 +249,13 @@ function extractLogEntriesFromSession(sessionDetails) {
 
   for (const field of logFields) {
     if (sessionDetails[field] && Array.isArray(sessionDetails[field])) {
-      console.log(`[get-session-log] Logs encontrados no campo: ${field}`);
+      console.log(`[veeam_get_session_log] Logs encontrados no campo: ${field}`);
       return sessionDetails[field];
     }
   }
 
   // Se nenhum campo de log encontrado, criar entrada básica com resultado
-  console.log(`[get-session-log] Nenhum campo de log encontrado. Usando resultado da session.`);
+  console.log(`[veeam_get_session_log] Nenhum campo de log encontrado. Usando resultado da session.`);
 
   return [{
     timestamp: sessionDetails.endTime || sessionDetails.creationTime,

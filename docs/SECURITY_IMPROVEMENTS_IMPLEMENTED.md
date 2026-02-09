@@ -26,7 +26,7 @@
 {
   "type": "safety-guard-rejected-no-token",
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "rejectionReason": "Token de confirmação ausente"
   }
 }
@@ -35,7 +35,7 @@
 {
   "type": "safety-guard-rejected-invalid-token",
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "rejectionReason": "Token de confirmação inválido"
   }
 }
@@ -44,7 +44,7 @@
 {
   "type": "safety-guard-rejected-insufficient-reason",
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "rejectionReason": "Justificativa ausente ou muito curta",
     "reasonLength": 5,
     "minRequired": 10
@@ -55,7 +55,7 @@
 {
   "type": "safety-guard-rejected-reason-too-long",
   "metadata": {
-    "operation": "stop-backup-job",
+    "operation": "veeam_stop_backup_job",
     "rejectionReason": "Justificativa excede tamanho máximo permitido",
     "reasonLength": 2500,
     "maxAllowed": 1000
@@ -161,8 +161,8 @@ grep "rejected" logs/audit.log | \
   sort | uniq -c
 
 # Resultado:
-#  12 start-backup-job
-#   8 stop-backup-job
+#  12 veeam_start_backup_job
+#   8 veeam_stop_backup_job
 ```
 
 ### Cenário 3: Conformidade e Auditoria

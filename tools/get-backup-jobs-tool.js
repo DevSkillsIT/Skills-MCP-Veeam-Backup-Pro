@@ -13,7 +13,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add backup jobs tool (not sessions!)
   server.tool(
-    "get-backup-jobs",
+    "veeam_list_backup_jobs",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Maximum number of jobs to retrieve"),
       skip: z.number().min(0).default(0).describe("Number of jobs to skip (for pagination)"),
@@ -100,8 +100,8 @@ export default function(server) {
           filteredJobs = searchByDescription(filteredJobs, descriptionFilter);
           const afterCount = filteredJobs.length;
 
-          console.log(`[get-backup-jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
-          console.log(`[get-backup-jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
+          console.log(`[veeam_list_backup_jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
+          console.log(`[veeam_list_backup_jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
 
           // Atualizar jobsData.data com jobs filtrados
           jobsData.data = filteredJobs;
@@ -117,8 +117,8 @@ export default function(server) {
           filteredJobs = searchByName(filteredJobs, nameFilter, 'name');
           const afterCount = filteredJobs.length;
 
-          console.log(`[get-backup-jobs] ✅ Applied nameFilter: "${nameFilter}"`);
-          console.log(`[get-backup-jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
+          console.log(`[veeam_list_backup_jobs] ✅ Applied nameFilter: "${nameFilter}"`);
+          console.log(`[veeam_list_backup_jobs] 📊 Results: ${afterCount} jobs match (from ${beforeCount} total)`);
 
           // Atualizar jobsData.data com jobs filtrados
           jobsData.data = filteredJobs;
@@ -186,7 +186,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-backup-jobs] Falha na autenticação automática:', authError);
+          console.error('[veeam_list_backup_jobs] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",
@@ -202,7 +202,7 @@ export default function(server) {
         }
 
         // Erro genérico
-        console.error('Error in get-backup-jobs:', authError);
+        console.error('Error in veeam_list_backup_jobs:', authError);
         return {
           content: [{
             type: "text",
@@ -211,7 +211,7 @@ export default function(server) {
                   `1. Verify the VBR server is accessible\n` +
                   `2. Check your user permissions\n` +
                   `3. Try different typeFilter values (Backup, Replica, BackupCopy, etc.)\n` +
-                  `4. This tool fetches JOBS (not sessions) - use get-backup-sessions for execution history`
+                  `4. This tool fetches JOBS (not sessions) - use veeam_list_backup_sessions for execution history`
           }],
           isError: true
         };

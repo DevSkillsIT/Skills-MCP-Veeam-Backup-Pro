@@ -149,26 +149,26 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 
 | Categoria | Ferramenta | Descrição | Método | Destrutivo | Tipo |
 |-----------|------------|-----------|---------|------------|------|
-| **Jobs** | `get-backup-jobs` | Lista todos os jobs de backup configurados (busca semântica) | GET | Não | Leitura |
-| **Jobs** | `get-backup-copy-jobs` | Lista Backup Copy jobs (3-2-1 compliance) | GET | Não | Leitura |
-| **Jobs** | `get-job-details` | Informações detalhadas de job específico | GET | Não | Leitura |
-| **Jobs** | `get-job-schedule` | Detalhes de scheduling de um job | GET | Não | Leitura |
-| **Sessões** | `get-backup-sessions` | Histórico de execuções de backup | GET | Não | Leitura |
-| **Sessões** | `get-running-sessions` | Lista TODAS as sessions em execução (backup jobs + system tasks) | GET | Não | Leitura |
-| **Sessões** | `get-running-backup-jobs` | Lista APENAS backup jobs em execução (exclui system tasks) | GET | Não | Leitura |
-| **Sessões** | `get-failed-sessions` | Lista sessions que falharam (troubleshooting) | GET | Não | Leitura |
-| **Sessões** | `get-session-log` | Logs detalhados de uma session | GET | Não | Leitura |
-| **Restore** | `get-restore-points` | Lista restore points de uma VM (busca semântica) | GET | Não | Leitura |
-| **Infraestrutura** | `get-backup-proxies` | Status dos servidores proxy | GET | Não | Leitura |
-| **Armazenamento** | `get-backup-repositories` | Informações de repositórios | GET | Não | Leitura |
-| **Licenciamento** | `get-license-info` | Detalhes da licença Veeam | GET | Não | Leitura |
-| **Servidor** | `get-server-info` | Informações do servidor VBR | GET | Não | Leitura |
-| **Controle** | `start-backup-job` | Inicia job de backup sob demanda | POST | Sim | Escrita (Safety Guard) |
-| **Controle** | `stop-backup-job` | Para job de backup em execução | POST | Sim | Escrita (Safety Guard) |
+| **Jobs** | `veeam_list_backup_jobs` | Lista todos os jobs de backup configurados (busca semântica) | GET | Não | Leitura |
+| **Jobs** | `veeam_list_backup_copy_jobs` | Lista Backup Copy jobs (3-2-1 compliance) | GET | Não | Leitura |
+| **Jobs** | `veeam_get_backup_job_details` | Informações detalhadas de job específico | GET | Não | Leitura |
+| **Jobs** | `veeam_get_backup_job_schedule` | Detalhes de scheduling de um job | GET | Não | Leitura |
+| **Sessões** | `veeam_list_backup_sessions` | Histórico de execuções de backup | GET | Não | Leitura |
+| **Sessões** | `veeam_list_running_sessions` | Lista TODAS as sessions em execução (backup jobs + system tasks) | GET | Não | Leitura |
+| **Sessões** | `veeam_list_running_backup_jobs` | Lista APENAS backup jobs em execução (exclui system tasks) | GET | Não | Leitura |
+| **Sessões** | `veeam_list_failed_sessions` | Lista sessions que falharam (troubleshooting) | GET | Não | Leitura |
+| **Sessões** | `veeam_get_session_log` | Logs detalhados de uma session | GET | Não | Leitura |
+| **Restore** | `veeam_list_restore_points` | Lista restore points de uma VM (busca semântica) | GET | Não | Leitura |
+| **Infraestrutura** | `veeam_list_backup_proxies` | Status dos servidores proxy | GET | Não | Leitura |
+| **Armazenamento** | `veeam_list_backup_repositories` | Informações de repositórios | GET | Não | Leitura |
+| **Licenciamento** | `veeam_get_license_info` | Detalhes da licença Veeam | GET | Não | Leitura |
+| **Servidor** | `veeam_get_server_info` | Informações do servidor VBR | GET | Não | Leitura |
+| **Controle** | `veeam_start_backup_job` | Inicia job de backup sob demanda | POST | Sim | Escrita (Safety Guard) |
+| **Controle** | `veeam_stop_backup_job` | Para job de backup em execução | POST | Sim | Escrita (Safety Guard) |
 
 **Safety Guard:** Ferramentas de escrita requerem `confirmationToken` e `reason` para execução segura.
 
-**🔍 Busca Semântica:** Ferramentas `get-backup-jobs` e `get-restore-points` suportam busca semântica inteligente (multi-palavra, normalização de acentos, busca parcial).
+**🔍 Busca Semântica:** Ferramentas `veeam_list_backup_jobs` e `veeam_list_restore_points` suportam busca semântica inteligente (multi-palavra, normalização de acentos, busca parcial).
 
 ### 🔒 Autenticação Automática Inteligente
 
@@ -447,7 +447,7 @@ Descrições detalhadas das 16 ferramentas MCP com exemplos práticos, parâmetr
 
 ---
 
-### 1. **get-backup-jobs** - Listar Jobs de Backup
+### 1. **veeam_list_backup_jobs** - Listar Jobs de Backup
 
 Lista todos os jobs de backup configurados no Veeam VBR com informações detalhadas sobre configuração, agendamento e última execução.
 
@@ -494,14 +494,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-jobs","arguments":{}},
+    "params":{"name":"veeam_list_backup_jobs","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 2. **get-backup-copy-jobs** - Jobs de Backup Copy (3-2-1 Compliance)
+### 2. **veeam_list_backup_copy_jobs** - Jobs de Backup Copy (3-2-1 Compliance)
 
 Lista jobs de Backup Copy configurados para compliance com regra 3-2-1 (3 cópias, 2 mídias diferentes, 1 offsite).
 
@@ -542,14 +542,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-copy-jobs","arguments":{}},
+    "params":{"name":"veeam_list_backup_copy_jobs","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 3. **get-job-details** - Detalhes Completos de Job Específico
+### 3. **veeam_get_backup_job_details** - Detalhes Completos de Job Específico
 
 Obtém informações detalhadas de um job incluindo configuração, objetos protegidos, últimas sessões e agendamento.
 
@@ -590,14 +590,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-job-details","arguments":{"jobId":"urn:veeam:Job:..."}},
+    "params":{"name":"veeam_get_backup_job_details","arguments":{"jobId":"urn:veeam:Job:..."}},
     "id":1
   }'
 ```
 
 ---
 
-### 4. **get-job-schedule** - Agendamento de Job
+### 4. **veeam_get_backup_job_schedule** - Agendamento de Job
 
 Retorna detalhes do agendamento configurado para um job específico.
 
@@ -636,14 +636,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-job-schedule","arguments":{"jobId":"urn:veeam:Job:..."}},
+    "params":{"name":"veeam_get_backup_job_schedule","arguments":{"jobId":"urn:veeam:Job:..."}},
     "id":1
   }'
 ```
 
 ---
 
-### 5. **get-backup-sessions** - Histórico de Execuções de Backup
+### 5. **veeam_list_backup_sessions** - Histórico de Execuções de Backup
 
 Obtém histórico de sessões de backup (execuções passadas) com filtros por job, período ou status.
 
@@ -690,14 +690,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-sessions","arguments":{"limit":50}},
+    "params":{"name":"veeam_list_backup_sessions","arguments":{"limit":50}},
     "id":1
   }'
 ```
 
 ---
 
-### 6. **get-running-sessions** - Sessões em Execução (Todas)
+### 6. **veeam_list_running_sessions** - Sessões em Execução (Todas)
 
 Lista TODAS as sessões atualmente em execução (backup jobs + system tasks).
 
@@ -740,25 +740,25 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-running-sessions","arguments":{}},
+    "params":{"name":"veeam_list_running_sessions","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 7. **get-running-backup-jobs** - Backup Jobs em Execução (Filtrado)
+### 7. **veeam_list_running_backup_jobs** - Backup Jobs em Execução (Filtrado)
 
 Lista APENAS backup jobs em execução, EXCLUINDO system tasks e outros tipos de sessão.
 
 **Descrição Completa:**
-Versão filtrada de `get-running-sessions` mostrando apenas jobs de backup ativos. Ideal para dashboards focados.
+Versão filtrada de `veeam_list_running_sessions` mostrando apenas jobs de backup ativos. Ideal para dashboards focados.
 
 **Parâmetros:**
 - Nenhum
 
 **Retorno JSON:**
-- Mesmo formato de `get-running-sessions`
+- Mesmo formato de `veeam_list_running_sessions`
 - Apenas jobs do tipo Backup
 
 **Casos de Uso:**
@@ -783,14 +783,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-running-backup-jobs","arguments":{}},
+    "params":{"name":"veeam_list_running_backup_jobs","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 8. **get-failed-sessions** - Sessões com Falha (Troubleshooting)
+### 8. **veeam_list_failed_sessions** - Sessões com Falha (Troubleshooting)
 
 Lista sessões que falharam nas últimas X horas. Crítico para troubleshooting e alertas.
 
@@ -830,14 +830,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-failed-sessions","arguments":{"hours":24}},
+    "params":{"name":"veeam_list_failed_sessions","arguments":{"hours":24}},
     "id":1
   }'
 ```
 
 ---
 
-### 9. **get-session-log** - Logs Detalhados de Sessão
+### 9. **veeam_get_session_log** - Logs Detalhados de Sessão
 
 Retorna logs completos de uma sessão específica para troubleshooting profundo.
 
@@ -877,14 +877,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-session-log","arguments":{"sessionId":"abc-123","logLevel":"Error"}},
+    "params":{"name":"veeam_get_session_log","arguments":{"sessionId":"abc-123","logLevel":"Error"}},
     "id":1
   }'
 ```
 
 ---
 
-### 10. **get-restore-points** - Restore Points de VM
+### 10. **veeam_list_restore_points** - Restore Points de VM
 
 Lista restore points disponíveis para uma VM específica. Essencial para planejamento de restore.
 
@@ -929,14 +929,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-restore-points","arguments":{"vmName":"SQL-SERVER-01"}},
+    "params":{"name":"veeam_list_restore_points","arguments":{"vmName":"SQL-SERVER-01"}},
     "id":1
   }'
 ```
 
 ---
 
-### 11. **get-backup-proxies** - Status dos Servidores Proxy
+### 11. **veeam_list_backup_proxies** - Status dos Servidores Proxy
 
 Lista proxies de backup com status de saúde, carga atual e capacidade.
 
@@ -977,14 +977,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-proxies","arguments":{}},
+    "params":{"name":"veeam_list_backup_proxies","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 12. **get-backup-repositories** - Informações de Repositórios de Backup
+### 12. **veeam_list_backup_repositories** - Informações de Repositórios de Backup
 
 Lista repositórios com capacidade, espaço livre e alertas de threshold.
 
@@ -1026,14 +1026,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-repositories","arguments":{"threshold":20}},
+    "params":{"name":"veeam_list_backup_repositories","arguments":{"threshold":20}},
     "id":1
   }'
 ```
 
 ---
 
-### 13. **get-license-info** - Informações de Licença Veeam
+### 13. **veeam_get_license_info** - Informações de Licença Veeam
 
 Retorna detalhes da licença Veeam: tipo, validade, capacidade e uso.
 
@@ -1074,14 +1074,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-license-info","arguments":{}},
+    "params":{"name":"veeam_get_license_info","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 14. **get-server-info** - Informações do Servidor Veeam VBR
+### 14. **veeam_get_server_info** - Informações do Servidor Veeam VBR
 
 Retorna informações do servidor Veeam: versão, hostname, uptime e configuração.
 
@@ -1123,14 +1123,14 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-server-info","arguments":{}},
+    "params":{"name":"veeam_get_server_info","arguments":{}},
     "id":1
   }'
 ```
 
 ---
 
-### 15. **start-backup-job** - Iniciar Job de Backup Sob Demanda 🔐 SAFETY GUARD
+### 15. **veeam_start_backup_job** - Iniciar Job de Backup Sob Demanda 🔐 SAFETY GUARD
 
 Inicia execução manual de job de backup. **OPERAÇÃO CRÍTICA** protegida por Safety Guard.
 
@@ -1177,7 +1177,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"start-backup-job",
+      "name":"veeam_start_backup_job",
       "arguments":{
         "jobId":"urn:veeam:Job:...",
         "fullBackup":false,
@@ -1191,7 +1191,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ---
 
-### 16. **stop-backup-job** - Parar Job de Backup em Execução 🔐 SAFETY GUARD
+### 16. **veeam_stop_backup_job** - Parar Job de Backup em Execução 🔐 SAFETY GUARD
 
 Para job de backup em execução. **OPERAÇÃO DESTRUTIVA** protegida por Safety Guard.
 
@@ -1244,7 +1244,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"stop-backup-job",
+      "name":"veeam_stop_backup_job",
       "arguments":{
         "jobId":"urn:veeam:Job:...",
         "reason":"Job travado há 12 horas causando lentidão no storage",
@@ -1259,7 +1259,7 @@ curl -X POST http://localhost:8825/mcp \
 
 ## 🔐 Nota sobre Safety Guard
 
-As ferramentas **start-backup-job** e **stop-backup-job** são protegidas por **Safety Guard** devido ao impacto potencial:
+As ferramentas **veeam_start_backup_job** e **veeam_stop_backup_job** são protegidas por **Safety Guard** devido ao impacto potencial:
 
 - **Requerem confirmação explícita** via token
 - **Justificativa obrigatória** com mínimo 10 caracteres
@@ -1845,7 +1845,7 @@ CHECKLIST DE VALIDAÇÃO:
 
 📋 NEXT STEPS:
 1. Executar checklist de validação
-2. Tentar backup manual (start-backup-job)
+2. Tentar backup manual (veeam_start_backup_job)
 3. Se persistir, validar SQL Server VSS Writers com DBA
 ```
 
@@ -2409,7 +2409,7 @@ Configure os endpoints individuais:
 > "Mostre todos os jobs de backup que falharam nas últimas 24 horas"
 
 **Processo:**
-1. Claude chama `get-backup-sessions` para obter histórico
+1. Claude chama `veeam_list_backup_sessions` para obter histórico
 2. Filtra sessões com status "Failed"
 3. Filtra por data (últimas 24h)
 4. Apresenta resultado formatado
@@ -2437,7 +2437,7 @@ Encontrei 2 jobs com falha nas últimas 24 horas:
 > "Quais repositórios estão com mais de 80% de uso?"
 
 **Processo:**
-1. Claude chama `get-backup-repositories`
+1. Claude chama `veeam_list_backup_repositories`
 2. Calcula percentual de uso
 3. Filtra repositórios >80%
 4. Alerta sobre espaço crítico
@@ -2467,7 +2467,7 @@ Encontrei 2 jobs com falha nas últimas 24 horas:
 > "Me mostre o histórico de performance do job 'VM-Production-Backup' nos últimos 7 dias"
 
 **Processo:**
-1. Claude chama `get-job-details` com nome do job
+1. Claude chama `veeam_get_backup_job_details` com nome do job
 2. Analisa últimas sessões
 3. Calcula médias de duração e throughput
 4. Identifica tendências
@@ -2499,7 +2499,7 @@ Próxima execução: Hoje às 23:00
 > "Minha licença Veeam está próxima de vencer?"
 
 **Processo:**
-1. Claude chama `get-license-info`
+1. Claude chama `veeam_get_license_info`
 2. Obtém data de expiração
 3. Calcula dias restantes
 4. Alerta se <30 dias

@@ -57,10 +57,10 @@ The implementation of Description Features for multi-client backup operations ha
 
 ### 1.2 Tool Integration
 **Files Modified:**
-- `tools/get-backup-jobs-tool.js` - Added `descriptionFilter` parameter ✅
-- `tools/get-backup-copy-jobs-tool.js` - Added `descriptionFilter` parameter ✅
-- `tools/start-backup-job-tool.js` - Returns description in response metadata ✅
-- `tools/stop-backup-job-tool.js` - Returns description in response metadata ✅
+- `tools/veeam_list_backup_jobs-tool.js` - Added `descriptionFilter` parameter ✅
+- `tools/veeam_list_backup_copy_jobs-tool.js` - Added `descriptionFilter` parameter ✅
+- `tools/veeam_start_backup_job-tool.js` - Returns description in response metadata ✅
+- `tools/veeam_stop_backup_job-tool.js` - Returns description in response metadata ✅
 
 ---
 
@@ -123,23 +123,23 @@ The implementation of Description Features for multi-client backup operations ha
 All 15 tools tested (10 GET operations, 5 skipped for safety):
 
 **GET Tools (No State Changes):**
-- ✅ get-server-info
-- ✅ get-license-info
-- ✅ get-backup-jobs
-- ✅ get-backup-sessions
-- ✅ get-backup-proxies
-- ✅ get-backup-repositories
-- ✅ get-running-sessions
-- ✅ get-failed-sessions
-- ✅ get-backup-copy-jobs
-- ✅ get-restore-points
+- ✅ veeam_get_server_info
+- ✅ veeam_get_license_info
+- ✅ veeam_list_backup_jobs
+- ✅ veeam_list_backup_sessions
+- ✅ veeam_list_backup_proxies
+- ✅ veeam_list_backup_repositories
+- ✅ veeam_list_running_sessions
+- ✅ veeam_list_failed_sessions
+- ✅ veeam_list_backup_copy_jobs
+- ✅ veeam_list_restore_points
 
 **Tools Skipped (Safety/Validation):**
-- ⚠️ get-job-details (requires valid job ID)
-- ⚠️ get-job-schedule (requires valid job ID)
-- ⚠️ get-session-log (requires valid session ID)
-- ⚠️ start-backup-job (would execute real backup)
-- ⚠️ stop-backup-job (would stop real backup)
+- ⚠️ veeam_get_backup_job_details (requires valid job ID)
+- ⚠️ veeam_get_backup_job_schedule (requires valid job ID)
+- ⚠️ veeam_get_session_log (requires valid session ID)
+- ⚠️ veeam_start_backup_job (would execute real backup)
+- ⚠️ veeam_stop_backup_job (would stop real backup)
 
 ---
 
@@ -147,7 +147,7 @@ All 15 tools tested (10 GET operations, 5 skipped for safety):
 
 ### 4.1 Data Retrieval with Filters
 
-**get-backup-jobs with descriptionFilter:**
+**veeam_list_backup_jobs with descriptionFilter:**
 ```json
 {
   "summary": "Retrieved 10 backup jobs out of 21 total jobs",
@@ -242,22 +242,22 @@ Current job descriptions in test environment:
 
 **Available Tools:**
 ```
-1. get-server-info
-2. get-license-info
-3. get-backup-jobs ⭐ (with descriptionFilter)
-4. get-backup-sessions
-5. get-backup-proxies
-6. get-backup-repositories
-7. get-running-sessions
-8. get-failed-sessions
-9. get-backup-copy-jobs ⭐ (with descriptionFilter)
-10. get-restore-points
-11. get-running-backup-jobs
-12. get-job-details
-13. get-job-schedule
-14. get-session-log
-15. start-backup-job ⭐ (returns description)
-16. stop-backup-job ⭐ (returns description)
+1. veeam_get_server_info
+2. veeam_get_license_info
+3. veeam_list_backup_jobs ⭐ (with descriptionFilter)
+4. veeam_list_backup_sessions
+5. veeam_list_backup_proxies
+6. veeam_list_backup_repositories
+7. veeam_list_running_sessions
+8. veeam_list_failed_sessions
+9. veeam_list_backup_copy_jobs ⭐ (with descriptionFilter)
+10. veeam_list_restore_points
+11. veeam_list_running_backup_jobs
+12. veeam_get_backup_job_details
+13. veeam_get_backup_job_schedule
+14. veeam_get_session_log
+15. veeam_start_backup_job ⭐ (returns description)
+16. veeam_stop_backup_job ⭐ (returns description)
 ```
 
 **Status Codes:**
@@ -318,8 +318,8 @@ Current job descriptions in test environment:
 ### 10.2 Integration Tests
 **File:** `/opt/mcp-servers/veeam-backup/tests/test-description-features.sh`
 - 12 integration tests covering:
-  - `get-backup-jobs` with/without filters
-  - `get-backup-copy-jobs` with filters
+  - `veeam_list_backup_jobs` with/without filters
+  - `veeam_list_backup_copy_jobs` with filters
   - Response structure validation
   - PM2 service health
   - MCP endpoint availability

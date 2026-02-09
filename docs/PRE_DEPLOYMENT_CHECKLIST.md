@@ -10,10 +10,10 @@
 
 - [x] All source files present
   - [x] lib/description-helpers.js (6 functions, 500 lines)
-  - [x] tools/get-backup-jobs-tool.js (updated)
-  - [x] tools/get-backup-copy-jobs-tool.js (updated)
-  - [x] tools/start-backup-job-tool.js (updated)
-  - [x] tools/stop-backup-job-tool.js (updated)
+  - [x] tools/veeam_list_backup_jobs-tool.js (updated)
+  - [x] tools/veeam_list_backup_copy_jobs-tool.js (updated)
+  - [x] tools/veeam_start_backup_job-tool.js (updated)
+  - [x] tools/veeam_stop_backup_job-tool.js (updated)
 
 - [x] Code quality verified
   - [x] No syntax errors
@@ -96,10 +96,10 @@
   - [x] enrichJobWithDescription() complete
 
 - [x] Tool integration
-  - [x] descriptionFilter in get-backup-jobs
-  - [x] descriptionFilter in get-backup-copy-jobs
-  - [x] description returned in start-backup-job
-  - [x] description returned in stop-backup-job
+  - [x] descriptionFilter in veeam_list_backup_jobs
+  - [x] descriptionFilter in veeam_list_backup_copy_jobs
+  - [x] description returned in veeam_start_backup_job
+  - [x] description returned in veeam_stop_backup_job
 
 - [x] Data handling
   - [x] Parses structured format correctly
@@ -257,7 +257,7 @@ curl -X POST http://localhost:8825/mcp \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
-    "params":{"name":"get-backup-jobs","arguments":{"descriptionFilter":"test"}},
+    "params":{"name":"veeam_list_backup_jobs","arguments":{"descriptionFilter":"test"}},
     "id":1
   }'
 # Expected: Jobs list (possibly empty if no matches)

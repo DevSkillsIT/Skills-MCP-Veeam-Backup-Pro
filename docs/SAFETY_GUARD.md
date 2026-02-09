@@ -47,17 +47,17 @@ O Safety Guard protege **2 operações críticas**:
 
 | Operação | Descrição | Impacto |
 |----------|-----------|---------|
-| **start-backup-job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
-| **stop-backup-job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
+| **veeam_start_backup_job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
+| **veeam_stop_backup_job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
 
 ### Por que essas operações?
 
-**start-backup-job:**
+**veeam_start_backup_job:**
 - Consumo inesperado de recursos (CPU, rede, storage)
 - Pode conflitar com janela de backup programada
 - Impacto em VMs de produção (snapshots, I/O)
 
-**stop-backup-job:**
+**veeam_stop_backup_job:**
 - Backup incompleto = ponto de restauração inválido
 - Pode deixar snapshots órfãos nas VMs
 - Interrompe cadeia de backups incrementais
@@ -135,7 +135,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
       "fullBackup": false
@@ -155,7 +155,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
       "fullBackup": false,
@@ -177,7 +177,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
 ```json
 // Request (Safety Guard OFF)
 {
-  "name": "start-backup-job",
+  "name": "veeam_start_backup_job",
   "arguments": {
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false
@@ -205,7 +205,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
 ```json
 // Request (Safety Guard ON, sem confirmationToken)
 {
-  "name": "start-backup-job",
+  "name": "veeam_start_backup_job",
   "arguments": {
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false
@@ -218,7 +218,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
     "type": "text",
     "text": {
       "error": true,
-      "message": "SAFETY GUARD: Operação \"start-backup-job\" requer confirmação explícita.\n\n
+      "message": "SAFETY GUARD: Operação \"veeam_start_backup_job\" requer confirmação explícita.\n\n
 Descrição: Iniciar backup job sob demanda (fora do schedule)\n
 Alvo: Job urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n
 Para executar esta operação, forneça:\n
@@ -241,7 +241,7 @@ Exemplo de uso:\n
 ```json
 // Request (Safety Guard ON, com confirmationToken e reason)
 {
-  "name": "start-backup-job",
+  "name": "veeam_start_backup_job",
   "arguments": {
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false,
@@ -266,7 +266,7 @@ Exemplo de uso:\n
 }
 
 // Log de auditoria adicional em /opt/mcp-servers/veeam-backup/logs/audit.log:
-// {"timestamp":"2025-12-10T14:30:00.000Z","operation":"safety-guard-authorized","jobId":"urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890","jobName":"Job","result":"authorized","metadata":{"operation":"start-backup-job","operationDescription":"Iniciar backup job sob demanda (fora do schedule)","reason":"Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware no servidor de produção","reasonLength":108,"guardEnabled":true,"timestamp":"2025-12-10T14:30:00.000Z"}}
+// {"timestamp":"2025-12-10T14:30:00.000Z","operation":"safety-guard-authorized","jobId":"urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890","jobName":"Job","result":"authorized","metadata":{"operation":"veeam_start_backup_job","operationDescription":"Iniciar backup job sob demanda (fora do schedule)","reason":"Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware no servidor de produção","reasonLength":108,"guardEnabled":true,"timestamp":"2025-12-10T14:30:00.000Z"}}
 ```
 
 ### Exemplo 4: Parar Job com Safety Guard (token INVÁLIDO)
@@ -274,7 +274,7 @@ Exemplo de uso:\n
 ```json
 // Request (token errado)
 {
-  "name": "stop-backup-job",
+  "name": "veeam_stop_backup_job",
   "arguments": {
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "confirmationToken": "token-errado-aqui",
@@ -297,7 +297,7 @@ Verifique se está usando o token correto."
 }
 
 // Log de auditoria:
-// [SafetyGuard] ⚠️  Tentativa de operação stop-backup-job com token INVÁLIDO (target: Job urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890)
+// [SafetyGuard] ⚠️  Tentativa de operação veeam_stop_backup_job com token INVÁLIDO (target: Job urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890)
 ```
 
 ### Exemplo 5: Parar Job com Safety Guard (reason muito curto)
@@ -305,7 +305,7 @@ Verifique se está usando o token correto."
 ```json
 // Request (reason com 5 caracteres, mínimo é 10)
 {
-  "name": "stop-backup-job",
+  "name": "veeam_stop_backup_job",
   "arguments": {
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "confirmationToken": "bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9",
@@ -319,7 +319,7 @@ Verifique se está usando o token correto."
     "type": "text",
     "text": {
       "error": true,
-      "message": "SAFETY GUARD: Justificativa obrigatória para operação \"stop-backup-job\".\n\n
+      "message": "SAFETY GUARD: Justificativa obrigatória para operação \"veeam_stop_backup_job\".\n\n
 A justificativa (reason) deve ter pelo menos 10 caracteres.\n
 Atual: 5 caracteres.\n\n
 Exemplo de justificativa válida:\n
@@ -337,7 +337,7 @@ Exemplo de justificativa válida:\n
 ### Erro 1: Confirmação Ausente
 
 ```
-SAFETY GUARD: Operação "start-backup-job" requer confirmação explícita.
+SAFETY GUARD: Operação "veeam_start_backup_job" requer confirmação explícita.
 
 Descrição: Iniciar backup job sob demanda (fora do schedule)
 Alvo: Job urn:veeam:Job:00000000-0000-0000-0000-000000000000
@@ -363,7 +363,7 @@ Verifique se está usando o token correto.
 ### Erro 3: Reason Muito Curto
 
 ```
-SAFETY GUARD: Justificativa obrigatória para operação "stop-backup-job".
+SAFETY GUARD: Justificativa obrigatória para operação "veeam_stop_backup_job".
 
 A justificativa (reason) deve ter pelo menos 10 caracteres.
 Atual: 5 caracteres.
@@ -409,7 +409,7 @@ pm2 logs mcp-veeam --err
   "user": "mcp-user",
   "error": null,
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "operationDescription": "Iniciar backup job sob demanda (fora do schedule)",
     "reason": "Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware",
     "reasonLength": 108,
@@ -430,7 +430,7 @@ pm2 logs mcp-veeam --err
 grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 
 # Filtrar por operação específica
-grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | jq 'select(.metadata.operation == "start-backup-job")'
+grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | jq 'select(.metadata.operation == "veeam_start_backup_job")'
 
 # Últimas 10 autorizações
 grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | tail -10 | jq
@@ -560,8 +560,8 @@ pm2 logs mcp-veeam --lines 20 | grep SafetyGuard
 - **Documentação GLPI:** `/opt/mcp-servers/glpi/README.md#safety-guard`
 - **Implementação Veeam:**
   - `/opt/mcp-servers/veeam-backup/lib/safety-guard.js`
-  - `/opt/mcp-servers/veeam-backup/tools/start-backup-job-tool.js`
-  - `/opt/mcp-servers/veeam-backup/tools/stop-backup-job-tool.js`
+  - `/opt/mcp-servers/veeam-backup/tools/veeam_start_backup_job-tool.js`
+  - `/opt/mcp-servers/veeam-backup/tools/veeam_stop_backup_job-tool.js`
 
 ---
 

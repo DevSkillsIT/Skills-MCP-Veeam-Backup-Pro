@@ -17,7 +17,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-job-schedule",
+    "veeam_get_backup_job_schedule",
     {
       jobId: z.string().describe("ID do job para obter schedule (UUID)")
     },
@@ -32,7 +32,7 @@ export default function(server) {
         // Autenticação
         const { host, port, token, apiVersion } = await ensureAuthenticated();
 
-        console.log(`[get-job-schedule] Buscando detalhes do job: ${jobId}`);
+        console.log(`[veeam_get_backup_job_schedule] Buscando detalhes do job: ${jobId}`);
 
         // Endpoint: GET /api/v1/jobs/{id}
         const apiUrl = `https://${host}:${port}/api/v1/jobs/${jobId}`;
@@ -52,7 +52,7 @@ export default function(server) {
             throw new Error(
               `Job com ID "${jobId}" não encontrado.\n` +
               `Verifique:\n` +
-              `- Se o ID está correto (use get-backup-jobs)\n` +
+              `- Se o ID está correto (use veeam_list_backup_jobs)\n` +
               `- Se você tem permissão para visualizar este job\n` +
               `- Se o job não foi excluído recentemente`
             );
@@ -63,7 +63,7 @@ export default function(server) {
         }
 
         const jobData = await response.json();
-        console.log(`[get-job-schedule] Job encontrado: "${jobData.name}"`);
+        console.log(`[veeam_get_backup_job_schedule] Job encontrado: "${jobData.name}"`);
 
         // Extrair informações de scheduling
         const scheduleInfo = extractScheduleInfo(jobData);
@@ -103,7 +103,7 @@ export default function(server) {
         // Enriquecer resposta
         const enrichedResponse = enrichResponse(
           responseData,
-          "get-job-schedule",
+          "veeam_get_backup_job_schedule",
           {
             jobId: jobData.id,
             scheduleType: jobData.scheduleType
@@ -113,19 +113,19 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 
       } catch (error) {
-        console.error('[get-job-schedule] Erro:', error);
+        console.error('[veeam_get_backup_job_schedule] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-job-schedule",
+          tool: "veeam_get_backup_job_schedule",
           jobId: jobId,
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
-              "Verifique que o jobId está correto (use get-backup-jobs)",
+              "Verifique que o jobId está correto (use veeam_list_backup_jobs)",
               "Confirme que você tem permissão para visualizar o job",
-              "Use get-backup-jobs para listar todos os jobs disponíveis"
+              "Use veeam_list_backup_jobs para listar todos os jobs disponíveis"
             ]
           }
         };
@@ -329,7 +329,7 @@ function generateScheduleRecommendations(jobData, scheduleInfo) {
     recommendations.push({
       severity: "WARNING",
       message: "Job nunca foi executado.",
-      action: "Execute manualmente para validar configuração (use start-backup-job)"
+      action: "Execute manualmente para validar configuração (use veeam_start_backup_job)"
     });
   }
 

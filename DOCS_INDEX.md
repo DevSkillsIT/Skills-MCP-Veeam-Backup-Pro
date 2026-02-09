@@ -18,7 +18,7 @@
 - ✅ Configuração básica (.env + Bearer Token)
 - ✅ 16 ferramentas disponíveis (14 leitura + 2 escrita com Safety Guard)
 - ✅ Documentação detalhada de cada ferramenta com exemplos práticos e casos de uso
-- ✅ **Busca semântica** em `get-backup-jobs` (nameFilter, descriptionFilter) e `get-restore-points` (vmName)
+- ✅ **Busca semântica** em `veeam_list_backup_jobs` (nameFilter, descriptionFilter) e `veeam_list_restore_points` (vmName)
 - ✅ Integração com Claude Code e Gemini CLI (MCP HTTP Streamable)
 - ✅ Exemplos práticos de uso
 - ✅ Licença MIT e créditos
@@ -224,22 +224,22 @@
 │   └── description-helpers.js         ← Busca semântica (searchByName, normalização)
 │
 ├── 📁 tools/                          ← Ferramentas MCP (16 tools)
-│   ├── get-backup-jobs-tool.js        ← Lista todos os jobs de backup
-│   ├── get-backup-copy-jobs-tool.js   ← Jobs de cópia para compliance 3-2-1
-│   ├── get-job-details-tool.js        ← Detalhes completos de um job
-│   ├── get-job-schedule-tool.js       ← Agendamento de jobs
-│   ├── get-backup-sessions-tool.js    ← Histórico de execuções
-│   ├── get-running-sessions-tool.js   ← Todas sessões em execução
-│   ├── get-running-backup-jobs-tool.js ← Jobs de backup rodando agora
-│   ├── get-failed-sessions-tool.js    ← Sessões com falha (troubleshooting)
-│   ├── get-session-log-tool.js        ← Logs detalhados de sessão
-│   ├── get-restore-points-tool.js     ← Pontos de restauração de VMs
-│   ├── get-backup-proxies-tool.js     ← Status dos proxies
-│   ├── get-backup-repositories-tool.js ← Repositórios e capacidade
-│   ├── get-license-info-tool.js       ← Informações de licença
-│   ├── get-server-info-tool.js        ← Informações do servidor VBR
-│   ├── start-backup-job-tool.js       ← Iniciar backup sob demanda (Safety Guard)
-│   └── stop-backup-job-tool.js        ← Parar backup em execução (Safety Guard)
+│   ├── veeam_list_backup_jobs-tool.js        ← Lista todos os jobs de backup
+│   ├── veeam_list_backup_copy_jobs-tool.js   ← Jobs de cópia para compliance 3-2-1
+│   ├── veeam_get_backup_job_details-tool.js        ← Detalhes completos de um job
+│   ├── veeam_get_backup_job_schedule-tool.js       ← Agendamento de jobs
+│   ├── veeam_list_backup_sessions-tool.js    ← Histórico de execuções
+│   ├── veeam_list_running_sessions-tool.js   ← Todas sessões em execução
+│   ├── veeam_list_running_backup_jobs-tool.js ← Jobs de backup rodando agora
+│   ├── veeam_list_failed_sessions-tool.js    ← Sessões com falha (troubleshooting)
+│   ├── veeam_get_session_log-tool.js        ← Logs detalhados de sessão
+│   ├── veeam_list_restore_points-tool.js     ← Pontos de restauração de VMs
+│   ├── veeam_list_backup_proxies-tool.js     ← Status dos proxies
+│   ├── veeam_list_backup_repositories-tool.js ← Repositórios e capacidade
+│   ├── veeam_get_license_info-tool.js       ← Informações de licença
+│   ├── veeam_get_server_info-tool.js        ← Informações do servidor VBR
+│   ├── veeam_start_backup_job-tool.js       ← Iniciar backup sob demanda (Safety Guard)
+│   └── veeam_stop_backup_job-tool.js        ← Parar backup em execução (Safety Guard)
 │
 ├── 📁 docs/                           ← Documentação técnica detalhada
 │   ├── IMPLEMENTACAO-MCP-HTTP-STREAMABLE.md

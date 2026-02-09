@@ -11,7 +11,7 @@ const httpsAgent = new https.Agent({
 export default function(server) {
   // Add server info tool
   server.tool(
-    "get-server-info",
+    "veeam_get_server_info",
     { },
     async () => {
       try {
@@ -43,7 +43,7 @@ export default function(server) {
       } catch (authError) {
         // Erro de autenticação
         if (authError.message.includes('Autenticação Veeam falhou')) {
-          console.error('[get-server-info] Falha na autenticação automática:', authError);
+          console.error('[veeam_get_server_info] Falha na autenticação automática:', authError);
           return {
             content: [{
               type: "text",

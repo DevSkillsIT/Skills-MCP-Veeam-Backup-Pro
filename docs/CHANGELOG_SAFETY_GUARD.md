@@ -68,13 +68,13 @@ Todas as mudanças notáveis do Safety Guard estão documentadas aqui.
 
 #### Arquivos Criados
 - `/lib/safety-guard.js` (360 linhas)
-- `/tools/start-backup-job-tool.js` (modificado com Safety Guard)
-- `/tools/stop-backup-job-tool.js` (modificado com Safety Guard)
+- `/tools/veeam_start_backup_job-tool.js` (modificado com Safety Guard)
+- `/tools/veeam_stop_backup_job-tool.js` (modificado com Safety Guard)
 - `/.env.example` (documentação de variáveis)
 - `/docs/SAFETY_GUARD.md` (742 linhas de documentação)
 
 #### Funcionalidades
-- Proteção de operações críticas (start-backup-job, stop-backup-job)
+- Proteção de operações críticas (veeam_start_backup_job, veeam_stop_backup_job)
 - Timing-safe token comparison (`crypto.timingSafeEqual`)
 - Validação de confirmação obrigatória
 - Audit logging de operações autorizadas

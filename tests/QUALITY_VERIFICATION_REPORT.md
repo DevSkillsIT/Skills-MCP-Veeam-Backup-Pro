@@ -87,7 +87,7 @@ async requireConfirmation(operation, confirmationToken, reason, targetId, target
 - ✅ Integração perfeita com `audit-logger.js`
 - ✅ Padrão singleton idêntico
 - ✅ Variáveis de ambiente padronizadas (MCP_SAFETY_GUARD, MCP_SAFETY_TOKEN)
-- ✅ Mesmo tratamento de erro em ambas tools (start/stop-backup-job)
+- ✅ Mesmo tratamento de erro em ambas tools (start/veeam_stop_backup_job)
 
 **Consistência com GLPI:**
 | Aspecto | GLPI | Veeam | Paridade |
@@ -157,7 +157,7 @@ if (this.safetyToken.toLowerCase().includes('token') ||
   "jobName": "Job",
   "result": "authorized",
   "metadata": {
-    "operation": "start-backup-job",
+    "operation": "veeam_start_backup_job",
     "reason": "Backup emergencial solicitado pelo cliente...",
     "reasonLength": 108,
     "guardEnabled": true,
@@ -173,7 +173,7 @@ grep "safety-guard-authorized" logs/audit.log | jq
 
 # Filtrar por operação
 grep "safety-guard-authorized" logs/audit.log | \
-  jq 'select(.metadata.operation == "start-backup-job")'
+  jq 'select(.metadata.operation == "veeam_start_backup_job")'
 
 # Ver justificativas
 grep "safety-guard-authorized" logs/audit.log | jq -r '.metadata.reason'
@@ -384,8 +384,8 @@ $ node --check lib/safety-guard.js
 ### Mecanismo de Proteção ✅ PASS
 
 **Operações Protegidas:**
-1. `start-backup-job` - Iniciar backup sob demanda
-2. `stop-backup-job` - Parar backup em execução
+1. `veeam_start_backup_job` - Iniciar backup sob demanda
+2. `veeam_stop_backup_job` - Parar backup em execução
 
 **Proteção Ativada APENAS Se:**
 - `MCP_SAFETY_GUARD === 'true'` (string)
@@ -393,9 +393,9 @@ $ node --check lib/safety-guard.js
 
 **Verificação NO INÍCIO da Operação:**
 ```javascript
-// start-backup-job-tool.js, linhas 39-45
+// veeam_start_backup_job-tool.js, linhas 39-45
 await safetyGuard.requireConfirmation(  // ← PRIMEIRA coisa
-  'start-backup-job',
+  'veeam_start_backup_job',
   confirmationToken,
   reason,
   jobId,

@@ -89,12 +89,17 @@ async function loadTools() {
           const toolModule = await import(`file://${toolPath}`);
 
           if (toolModule.default && typeof toolModule.default === 'function') {
-            // Register with MCP server
+            // Register with MCP server (stdio mode)
             toolModule.default(server);
 
-            // Store tool info for HTTP mode
-            const toolName = file.replace('.js', '').replace('-tool', '');
-            loadedTools.set(toolName, toolModule.default);
+            // Capture registered tool names for HTTP mode
+            // Suporta módulos que registram múltiplas tools (ex: license-info + license-workloads)
+            const captureMock = {
+              tool: (registeredName) => {
+                loadedTools.set(registeredName, toolModule.default);
+              }
+            };
+            toolModule.default(captureMock);
           }
         } catch (err) {
           process.stderr.write(`Error loading tool ${file}: ${err.message}\n`);
@@ -250,11 +255,14 @@ async function handleMCPToolCall(params) {
   // Criar mock MCP server context (SUPORTA 3 OU 4 PARÂMETROS)
   // Formato novo (SDK correto): (toolName, schema, handler)
   // Formato antigo (compatibilidade): (toolName, schema, description, handler)
+  // Filtra pelo nome solicitado para suportar módulos multi-tool (ex: license-info + license-workloads)
   const mockServer = {
     tool: (toolName, schema, handlerOrDescription, optionalHandler) => {
-      // Se 4º parâmetro existe, handler está no 4º parâmetro (formato antigo)
-      // Se 4º parâmetro não existe, handler está no 3º parâmetro (formato novo)
-      mockServer.currentHandler = optionalHandler || handlerOrDescription;
+      if (toolName === name) {
+        // Se 4º parâmetro existe, handler está no 4º parâmetro (formato antigo)
+        // Se 4º parâmetro não existe, handler está no 3º parâmetro (formato novo)
+        mockServer.currentHandler = optionalHandler || handlerOrDescription;
+      }
     }
   };
 

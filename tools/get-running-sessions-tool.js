@@ -24,7 +24,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-running-sessions",
+    "veeam_list_running_sessions",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Máximo de sessions a retornar (padrão: 100)")
     },
@@ -44,7 +44,7 @@ export default function(server) {
         });
 
         const apiUrl = `https://${host}:${port}/api/v1/sessions?${queryParams.toString()}`;
-        console.log(`[get-running-sessions] Buscando sessions em execução: ${apiUrl}`);
+        console.log(`[veeam_list_running_sessions] Buscando sessions em execução: ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -64,7 +64,7 @@ export default function(server) {
         }
 
         const sessionsData = await response.json();
-        console.log(`[get-running-sessions] Recebido: ${sessionsData.data?.length || 0} sessions`);
+        console.log(`[veeam_list_running_sessions] Recebido: ${sessionsData.data?.length || 0} sessions`);
 
         // Verificar se há sessions em execução
         if (!sessionsData.data || sessionsData.data.length === 0) {
@@ -85,16 +85,16 @@ export default function(server) {
                 "Jobs podem estar parados ou desabilitados"
               ],
               nextSteps: [
-                "Use get-backup-sessions para ver histórico completo",
-                "Use get-backup-jobs para verificar configuração de jobs",
-                "Verifique schedules dos jobs com get-job-schedule"
+                "Use veeam_list_backup_sessions para ver histórico completo",
+                "Use veeam_list_backup_jobs para verificar configuração de jobs",
+                "Verifique schedules dos jobs com veeam_get_backup_job_schedule"
               ]
             }
           };
 
           const enrichedResponse = enrichListResponse(
             [],
-            "get-running-sessions",
+            "veeam_list_running_sessions",
             { stateFilter: "Working" },
             { limit, skip: 0, total: 0 }
           );
@@ -239,7 +239,7 @@ export default function(server) {
         // Aplicar enriquecimento de lista
         const enrichedResponse = enrichListResponse(
           responseData.sessions,
-          "get-running-sessions",
+          "veeam_list_running_sessions",
           { stateFilter: "Working" },
           sessionsData.pagination
         );
@@ -253,18 +253,18 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(finalResponse, startTime));
 
       } catch (error) {
-        console.error('[get-running-sessions] Erro:', error);
+        console.error('[veeam_list_running_sessions] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-running-sessions",
+          tool: "veeam_list_running_sessions",
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
               "Verifique conectividade com o VBR server",
               "Confirme que credenciais estão corretas no .env",
-              "Use get-backup-sessions para debug (sem filtros)"
+              "Use veeam_list_backup_sessions para debug (sem filtros)"
             ]
           }
         };

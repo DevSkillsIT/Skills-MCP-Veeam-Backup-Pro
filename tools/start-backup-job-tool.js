@@ -20,7 +20,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "start-backup-job",
+    "veeam_start_backup_job",
     {
       jobId: z.string().describe("ID do backup job a iniciar (UUID)"),
       fullBackup: z.boolean().default(false).describe("Forçar full backup ao invés de incremental (padrão: false)"),
@@ -32,13 +32,13 @@ export default function(server) {
       const { jobId, fullBackup = false, confirmationToken, reason } = params;
 
       // Log de início da operação
-      console.log(`[start-backup-job] Iniciando job: ${jobId}, fullBackup: ${fullBackup}`);
+      console.log(`[veeam_start_backup_job] Iniciando job: ${jobId}, fullBackup: ${fullBackup}`);
 
       try {
         // SAFETY GUARD: Validar confirmação para operação crítica
         // Esta verificação DEVE ser a primeira coisa antes de qualquer operação
         await safetyGuard.requireConfirmation(
-          'start-backup-job',
+          'veeam_start_backup_job',
           confirmationToken,
           reason,
           jobId,
@@ -49,10 +49,10 @@ export default function(server) {
         validateVeeamId(jobId, "job");
 
         // 2. Validar que job existe e pode ser iniciado
-        console.log(`[start-backup-job] Validando job...`);
+        console.log(`[veeam_start_backup_job] Validando job...`);
         const job = await validateJobOperation(jobId, 'start');
 
-        console.log(`[start-backup-job] ✅ Job "${job.name}" validado. Iniciando...`);
+        console.log(`[veeam_start_backup_job] ✅ Job "${job.name}" validado. Iniciando...`);
 
         // 3. Autenticação
         const { host, port, token, apiVersion } = await ensureAuthenticated();
@@ -66,8 +66,8 @@ export default function(server) {
           type: fullBackup ? "Full" : "Incremental"
         };
 
-        console.log(`[start-backup-job] POST ${startUrl}`);
-        console.log(`[start-backup-job] Body:`, requestBody);
+        console.log(`[veeam_start_backup_job] POST ${startUrl}`);
+        console.log(`[veeam_start_backup_job] Body:`, requestBody);
 
         // 6. Executar POST para iniciar job
         const response = await fetch(startUrl, {
@@ -87,7 +87,7 @@ export default function(server) {
           const errorText = await response.text();
 
           // Log de auditoria de falha
-          await logOperation('start-backup-job', {
+          await logOperation('veeam_start_backup_job', {
             jobId,
             jobName: job.name,
             result: 'failed',
@@ -108,14 +108,14 @@ export default function(server) {
         // 8. Parsear resposta
         const startResult = await response.json();
 
-        console.log(`[start-backup-job] ✅ Job iniciado com sucesso`);
-        console.log(`[start-backup-job] Resultado:`, startResult);
+        console.log(`[veeam_start_backup_job] ✅ Job iniciado com sucesso`);
+        console.log(`[veeam_start_backup_job] Resultado:`, startResult);
 
         // 9. Extrair session ID criado (se disponível na resposta)
         const sessionId = startResult.sessionId || startResult.id || "N/A";
 
         // 10. Log de auditoria de sucesso
-        await logOperation('start-backup-job', {
+        await logOperation('veeam_start_backup_job', {
           jobId,
           jobName: job.name,
           result: 'success',
@@ -128,7 +128,7 @@ export default function(server) {
 
         // 11. Construir resposta enriquecida
         const operationResponse = enrichOperationResponse(
-          "start-backup-job",
+          "veeam_start_backup_job",
           {
             status: "started",
             sessionId: sessionId,
@@ -176,9 +176,9 @@ export default function(server) {
             descriptionFormatted: formatDescriptionForAI(job.description)
           },
           nextSteps: {
-            monitorProgress: `Use get-running-sessions para monitorar progresso`,
-            checkLogs: sessionId !== "N/A" ? `Use get-session-log com sessionId: ${sessionId}` : "Session ID não disponível ainda",
-            viewAllSessions: `Use get-backup-sessions com jobIdFilter: ${job.id}`
+            monitorProgress: `Use veeam_list_running_sessions para monitorar progresso`,
+            checkLogs: sessionId !== "N/A" ? `Use veeam_get_session_log com sessionId: ${sessionId}` : "Session ID não disponível ainda",
+            viewAllSessions: `Use veeam_list_backup_sessions com jobIdFilter: ${job.id}`
           },
           notes: [
             fullBackup ? "Full backup pode demorar mais que incremental" : "Incremental backup é mais rápido",
@@ -191,10 +191,10 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(enrichedResponse, startTime));
 
       } catch (error) {
-        console.error('[start-backup-job] Erro:', error);
+        console.error('[veeam_start_backup_job] Erro:', error);
 
         // Log de auditoria de erro
-        await logOperation('start-backup-job', {
+        await logOperation('veeam_start_backup_job', {
           jobId,
           jobName: jobId, // Usamos jobId porque job pode não ter sido carregado
           result: 'failed',
@@ -204,17 +204,17 @@ export default function(server) {
 
         const errorResponse = {
           error: true,
-          operation: "start-backup-job",
+          operation: "veeam_start_backup_job",
           message: error.message,
           jobId: jobId,
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
-              "Verifique que o jobId está correto (use get-backup-jobs)",
+              "Verifique que o jobId está correto (use veeam_list_backup_jobs)",
               "Confirme que o job está no estado 'Stopped' (0)",
               "Verifique permissões do usuário no VBR",
               "Confirme que repositório de destino está disponível",
-              "Use get-job-details para verificar configuração do job"
+              "Use veeam_get_backup_job_details para verificar configuração do job"
             ]
           }
         };

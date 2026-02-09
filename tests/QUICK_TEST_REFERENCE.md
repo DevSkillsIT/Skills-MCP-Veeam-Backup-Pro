@@ -26,12 +26,12 @@ pm2 logs mcp-veeam --lines 30 | grep SafetyGuard
 grep "MCP_SAFETY_GUARD" /opt/mcp-servers/veeam-backup/.env
 # Resultado esperado: MCP_SAFETY_GUARD=false
 
-# Chamar start-backup-job SEM confirmação
+# Chamar veeam_start_backup_job SEM confirmação
 curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID",
       "fullBackup": false
@@ -56,12 +56,12 @@ pm2 restart mcp-veeam
 # Aguardar 2 segundos
 sleep 2
 
-# Chamar start-backup-job SEM confirmação (deve falhar)
+# Chamar veeam_start_backup_job SEM confirmação (deve falhar)
 curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID",
       "fullBackup": false
@@ -69,7 +69,7 @@ curl -X POST http://localhost:8825/tools/call \
   }'
 
 # Resultado esperado: ❌ Erro 403 ou mensagem:
-# "SAFETY GUARD: Operação start-backup-job requer confirmação explícita"
+# "SAFETY GUARD: Operação veeam_start_backup_job requer confirmação explícita"
 ```
 
 ---
@@ -77,12 +77,12 @@ curl -X POST http://localhost:8825/tools/call \
 ## 4️⃣ Teste C: SafetyGuard HABILITADO - COM Confirmação
 
 ```bash
-# Chamar start-backup-job COM confirmação válida
+# Chamar veeam_start_backup_job COM confirmação válida
 curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID",
       "fullBackup": false,
@@ -105,7 +105,7 @@ curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID",
       "fullBackup": false,
@@ -129,7 +129,7 @@ curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "start-backup-job",
+    "name": "veeam_start_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID",
       "fullBackup": false,
@@ -168,12 +168,12 @@ grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | wc
 ## 8️⃣ Teste F: Stop Job (Operação Crítica Protegida)
 
 ```bash
-# Testar que stop-backup-job também é protegido
+# Testar que veeam_stop_backup_job também é protegido
 curl -X POST http://localhost:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
   -d '{
-    "name": "stop-backup-job",
+    "name": "veeam_stop_backup_job",
     "arguments": {
       "jobId": "urn:veeam:Job:VALID-JOB-ID-RUNNING"
     }

@@ -579,7 +579,7 @@ curl -X POST http://localhost:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"get-backup-jobs",
+      "name":"veeam_list_backup_jobs",
       "arguments":{}
     },
     "id":1

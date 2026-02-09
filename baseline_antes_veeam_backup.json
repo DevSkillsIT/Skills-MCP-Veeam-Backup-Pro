@@ -1,0 +1,240 @@
+{
+  "timestamp": "2026-02-09T20:11:55.812069Z",
+  "mcp_server": "veeam-backup",
+  "phase": "ANTES",
+  "tools_list": [
+    {
+      "name": "get-backup-jobs",
+      "description": "Lista todos os backup jobs configurados no servidor Veeam Backup & Replication (VBR) com filtros avançados. Permite filtrar por tipo de job (Backup, Replica, BackupCopy), estado (Started, Stopped, Paused) e nome. Suporta paginação para grandes volumes de jobs.",
+      "description_chars": 260,
+      "params": [
+        "limit",
+        "skip",
+        "typeFilter",
+        "stateFilter",
+        "nameFilter"
+      ]
+    },
+    {
+      "name": "get-backup-sessions",
+      "description": "Lista o histórico de execuções (sessions) de backup jobs com suporte a filtros e paginação. Retorna informações detalhadas sobre cada execução incluindo status (Success, Warning, Failed), horários de início/fim, duração e estatísticas de dados processados.",
+      "description_chars": 256,
+      "params": [
+        "limit",
+        "skip",
+        "jobId",
+        "statusFilter"
+      ]
+    },
+    {
+      "name": "get-job-details",
+      "description": "Obtém detalhes completos de um backup job específico incluindo configurações, VMs incluídas, schedule, repositório de destino, proxy utilizado, tipo de backup (incremental/full), retenção e estatísticas de execução. Essencial para auditoria e troubleshooting.",
+      "description_chars": 259,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "get-backup-proxies",
+      "description": "Lista todos os backup proxies configurados no servidor VBR. Proxies são componentes responsáveis por processar dados durante backups. Retorna informações sobre nome, tipo (VMware, Hyper-V), host, status (Online/Offline), tarefas concorrentes e utilização.",
+      "description_chars": 255,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "get-backup-repositories",
+      "description": "Lista todos os repositórios de backup configurados (locais de armazenamento de backups). Retorna informações sobre nome, tipo (Local, Network, Cloud), capacidade total, espaço livre, status e jobs associados. Essencial para planejamento de capacidade.",
+      "description_chars": 251,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "get-license-info",
+      "description": "Obtém informações completas sobre licenciamento Veeam Backup & Replication. Retorna tipo de licença (Community, Standard, Enterprise, Enterprise Plus), status (válida/expirada), data de expiração, número de VMs/workloads licenciados e features habilitadas. Crítico para compliance.",
+      "description_chars": 281,
+      "params": []
+    },
+    {
+      "name": "get-server-info",
+      "description": "Obtém informações gerais do servidor Veeam Backup & Replication incluindo versão do VBR, build number, nome do servidor, sistema operacional, uptime, status geral e configurações principais. Útil para diagnóstico e inventário.",
+      "description_chars": 226,
+      "params": []
+    },
+    {
+      "name": "start-backup-job",
+      "description": "Inicia a execução de um backup job sob demanda (fora do schedule configurado). Permite escolher entre backup incremental ou full. Retorna UUID da session criada. Requer permissões de operador ou superior. Útil para backups emergenciais ou testes.",
+      "description_chars": 246,
+      "params": [
+        "jobId",
+        "fullBackup"
+      ]
+    },
+    {
+      "name": "stop-backup-job",
+      "description": "Para a execução de um backup job em andamento. Interrompe graciosamente o processamento (aguarda conclusão da VM atual antes de parar). Pode levar alguns minutos para efetivar. Requer permissões de operador ou superior. Útil para manutenções emergenciais.",
+      "description_chars": 255,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "get-running-sessions",
+      "description": "Lista TODAS as sessions em execução (backup jobs + system tasks). Retorna separado em duas categorias: backupJobs (backups reais como BackupJob, ReplicaJob, BackupCopyJob) e systemTasks (tarefas de manutenção como MalwareDetection, SureBackup, Restore). Use get-running-backup-jobs para ver apenas backup jobs.",
+      "description_chars": 310,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "get-running-backup-jobs",
+      "description": "Lista APENAS backup jobs em execução (BackupJob, ReplicaJob, BackupCopyJob, EpAgentBackup). EXCLUI automaticamente system tasks como MalwareDetection, SureBackup, Restore, etc. Use esta tool quando precisar ver apenas backups reais rodando.",
+      "description_chars": 240,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "get-failed-sessions",
+      "description": "Lista todas as sessions de backup que falharam (status 'Failed'). Essencial para troubleshooting e análise de problemas. Retorna informações detalhadas sobre erros, job afetado, horário da falha e mensagens de erro. Permite filtrar por janela de tempo.",
+      "description_chars": 252,
+      "params": [
+        "limit",
+        "hours"
+      ]
+    },
+    {
+      "name": "get-backup-copy-jobs",
+      "description": "Lista todos os backup copy jobs configurados. Backup Copy Jobs são usados para criar cópias secundárias de backups (regra 3-2-1). Retorna configurações, repositório de origem/destino, schedule, retenção e status de sincronização. Importante para DR (Disaster Recovery).",
+      "description_chars": 269,
+      "params": [
+        "limit"
+      ]
+    },
+    {
+      "name": "get-restore-points",
+      "description": "Lista todos os restore points (pontos de restauração) disponíveis para VMs. Cada restore point representa um estado de backup da VM em um momento específico. Permite filtrar por nome ou UUID da VM. Retorna data/hora do ponto, tipo (full/incremental), tamanho e localização no repositório.",
+      "description_chars": 288,
+      "params": [
+        "vmName",
+        "vmId",
+        "limit"
+      ]
+    },
+    {
+      "name": "get-job-schedule",
+      "description": "Obtém a configuração de agendamento (schedule) de um backup job específico. Retorna tipo de schedule (Daily, Weekly, Monthly, Continuously), horários programados, dias da semana, retenção, política de backup full periódico e próxima execução prevista. Essencial para planejamento.",
+      "description_chars": 280,
+      "params": [
+        "jobId"
+      ]
+    },
+    {
+      "name": "get-session-log",
+      "description": "Obtém o log detalhado de uma session de backup específica. Retorna todas as entradas de log incluindo eventos, mensagens informativas, warnings e erros. Permite filtrar por nível de log. Crítico para troubleshooting de falhas e análise de desempenho. Logs incluem timestamps, componentes e mensagens detalhadas.",
+      "description_chars": 311,
+      "params": [
+        "sessionId",
+        "logLevel"
+      ]
+    }
+  ],
+  "tool_tests": {
+    "get-server-info": {
+      "input": {},
+      "success": true,
+      "response_keys": [
+        "vbrId",
+        "name",
+        "buildVersion",
+        "patches",
+        "databaseVendor",
+        "sqlServerEdition",
+        "sqlServerVersion",
+        "databaseSchemaVersion",
+        "databaseContentVersion"
+      ],
+      "response_size": 352,
+      "has_data": true
+    },
+    "get-backup-jobs": {
+      "input": {
+        "limit": 3
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "jobs",
+        "pagination",
+        "filters"
+      ],
+      "response_size": 1029,
+      "has_data": true
+    },
+    "get-running-sessions": {
+      "input": {
+        "limit": 5
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "backupJobs",
+        "systemTasks",
+        "statistics",
+        "sessions",
+        "pagination",
+        "_metadata",
+        "_performance"
+      ],
+      "response_size": 3166,
+      "has_data": true
+    },
+    "get-failed-sessions": {
+      "input": {
+        "limit": 3,
+        "hours": 24
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "analysis",
+        "sessions",
+        "pagination",
+        "_metadata",
+        "_troubleshooting",
+        "_performance"
+      ],
+      "response_size": 4964,
+      "has_data": true
+    },
+    "get-backup-repositories": {
+      "input": {
+        "limit": 5
+      },
+      "success": true,
+      "response_keys": [
+        "summary",
+        "warnings",
+        "offline",
+        "healthy",
+        "cloud",
+        "unknown",
+        "pagination"
+      ],
+      "response_size": 2714,
+      "has_data": true
+    },
+    "get-license-info": {
+      "input": {},
+      "success": true,
+      "response_keys": [
+        "VM",
+        "Server"
+      ],
+      "response_size": 12007,
+      "has_data": true
+    }
+  },
+  "tools_count": 16
+}

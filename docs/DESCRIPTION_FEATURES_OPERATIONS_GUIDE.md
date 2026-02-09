@@ -116,7 +116,7 @@ Resultado: Todos jobs com contrato Premium
 ### Pergunta 1: "Qual é o status dos backups do cliente ACME?"
 Claude faz:
 ```
-1. Busca get-backup-jobs com descriptionFilter="ACME"
+1. Busca veeam_list_backup_jobs com descriptionFilter="ACME"
 2. Encontra todos os jobs ACME
 3. Verifica status de cada um
 4. Responde com status consolidado
@@ -125,7 +125,7 @@ Claude faz:
 ### Pergunta 2: "Quais backups estão falhando em Curitiba?"
 Claude faz:
 ```
-1. Busca get-backup-jobs com descriptionFilter="Curitiba"
+1. Busca veeam_list_backup_jobs com descriptionFilter="Curitiba"
 2. Filtra por state="Failed"
 3. Retorna lista de jobs falhando em Curitiba
 4. Propõe ações corretivas
@@ -134,7 +134,7 @@ Claude faz:
 ### Pergunta 3: "Listar todos os contratos Enterprise"
 Claude faz:
 ```
-1. Busca get-backup-jobs com descriptionFilter="Enterprise"
+1. Busca veeam_list_backup_jobs com descriptionFilter="Enterprise"
 2. Retorna todos os jobs Enterprise
 3. Agrupa por cliente
 4. Exibe relatório consolidado
@@ -144,7 +144,7 @@ Claude faz:
 
 ## API Reference - Novos Parâmetros
 
-### `get-backup-jobs`
+### `veeam_list_backup_jobs`
 
 **Novo Parâmetro:**
 ```
@@ -163,7 +163,7 @@ Examples:
   "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
-    "name": "get-backup-jobs",
+    "name": "veeam_list_backup_jobs",
     "arguments": {
       "limit": 100,
       "typeFilter": "Backup",
@@ -174,7 +174,7 @@ Examples:
 }
 ```
 
-### `get-backup-copy-jobs`
+### `veeam_list_backup_copy_jobs`
 
 **Novo Parâmetro:**
 ```
@@ -182,7 +182,7 @@ descriptionFilter: string (opcional)
 Description: Filtra backup copy jobs por cliente
 ```
 
-**Uso Idêntico a get-backup-jobs**
+**Uso Idêntico a veeam_list_backup_jobs**
 
 ---
 
@@ -381,7 +381,7 @@ curl -X POST http://localhost:8825/mcp \
   -H "Authorization: Bearer TOKEN" \
   -d '{
     "method":"tools/call",
-    "params":{"name":"get-backup-jobs","arguments":{"descriptionFilter":"NOME_CLIENTE"}}
+    "params":{"name":"veeam_list_backup_jobs","arguments":{"descriptionFilter":"NOME_CLIENTE"}}
   }'
 ```
 

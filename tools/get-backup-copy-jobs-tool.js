@@ -17,7 +17,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-backup-copy-jobs",
+    "veeam_list_backup_copy_jobs",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Máximo de jobs a retornar (padrão: 100)"),
       // ════════════════════════════════════════════════════════════════════
@@ -58,7 +58,7 @@ export default function(server) {
         });
 
         const apiUrl = `https://${host}:${port}/api/v1/jobs?${queryParams.toString()}`;
-        console.log(`[get-backup-copy-jobs] Buscando Backup Copy jobs: ${apiUrl}`);
+        console.log(`[veeam_list_backup_copy_jobs] Buscando Backup Copy jobs: ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -78,7 +78,7 @@ export default function(server) {
         }
 
         const jobsData = await response.json();
-        console.log(`[get-backup-copy-jobs] Recebido: ${jobsData.data?.length || 0} jobs`);
+        console.log(`[veeam_list_backup_copy_jobs] Recebido: ${jobsData.data?.length || 0} jobs`);
 
         // ════════════════════════════════════════════════════════════════════
         // APLICAR FILTRO POR DESCRIPTION (pós-fetch, API VBR não suporta nativo)
@@ -93,8 +93,8 @@ export default function(server) {
           filteredJobs = searchByDescription(filteredJobs, descriptionFilter);
           const afterCount = filteredJobs.length;
 
-          console.log(`[get-backup-copy-jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
-          console.log(`[get-backup-copy-jobs] 📊 Results: ${afterCount} copy jobs match (from ${beforeCount} total)`);
+          console.log(`[veeam_list_backup_copy_jobs] ✅ Applied descriptionFilter: "${descriptionFilter}"`);
+          console.log(`[veeam_list_backup_copy_jobs] 📊 Results: ${afterCount} copy jobs match (from ${beforeCount} total)`);
 
           // Atualizar jobsData.data com jobs filtrados
           jobsData.data = filteredJobs;
@@ -142,7 +142,7 @@ export default function(server) {
 
           const enrichedResponse = enrichListResponse(
             [],
-            "get-backup-copy-jobs",
+            "veeam_list_backup_copy_jobs",
             { typeFilter: "BackupCopy", descriptionFilter },
             { limit, skip: 0, total: 0 }
           );
@@ -222,7 +222,7 @@ export default function(server) {
         // Aplicar enriquecimento de lista
         const enrichedResponse = enrichListResponse(
           responseData.jobs,
-          "get-backup-copy-jobs",
+          "veeam_list_backup_copy_jobs",
           { typeFilter: "BackupCopy", descriptionFilter },
           jobsData.pagination
         );
@@ -236,18 +236,18 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(finalResponse, startTime));
 
       } catch (error) {
-        console.error('[get-backup-copy-jobs] Erro:', error);
+        console.error('[veeam_list_backup_copy_jobs] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-backup-copy-jobs",
+          tool: "veeam_list_backup_copy_jobs",
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
               "Verifique conectividade com o VBR server",
               "Confirme que credenciais estão corretas no .env",
-              "Use get-backup-jobs sem filtros para debug"
+              "Use veeam_list_backup_jobs sem filtros para debug"
             ]
           }
         };

@@ -2,9 +2,9 @@
 // Tool para listar APENAS backup jobs em execução (exclui system tasks)
 // Filtra automaticamente para mostrar apenas BackupJob, ReplicaJob, BackupCopyJob
 //
-// DIFERENÇA com get-running-sessions:
-// - get-running-sessions: Retorna TUDO (backup jobs + system tasks)
-// - get-running-backup-jobs: Retorna APENAS backup jobs (exclui MalwareDetection, SureBackup, etc)
+// DIFERENÇA com veeam_list_running_sessions:
+// - veeam_list_running_sessions: Retorna TUDO (backup jobs + system tasks)
+// - veeam_list_running_backup_jobs: Retorna APENAS backup jobs (exclui MalwareDetection, SureBackup, etc)
 
 import fetch from "node-fetch";
 import https from "https";
@@ -28,7 +28,7 @@ const httpsAgent = new https.Agent({
 
 export default function(server) {
   server.tool(
-    "get-running-backup-jobs",
+    "veeam_list_running_backup_jobs",
     {
       limit: z.number().min(1).max(1000).default(100).describe("Máximo de backup jobs a retornar (padrão: 100)")
     },
@@ -51,7 +51,7 @@ export default function(server) {
         });
 
         const apiUrl = `https://${host}:${port}/api/v1/sessions?${queryParams.toString()}`;
-        console.log(`[get-running-backup-jobs] Buscando backup jobs em execução: ${apiUrl}`);
+        console.log(`[veeam_list_running_backup_jobs] Buscando backup jobs em execução: ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -71,7 +71,7 @@ export default function(server) {
         }
 
         const sessionsData = await response.json();
-        console.log(`[get-running-backup-jobs] Recebido ${sessionsData.data?.length || 0} sessions da API`);
+        console.log(`[veeam_list_running_backup_jobs] Recebido ${sessionsData.data?.length || 0} sessions da API`);
 
         // ═══════════════════════════════════════════════════════════════
         // FILTRO MANUAL: Remover system tasks, manter apenas backup jobs
@@ -81,7 +81,7 @@ export default function(server) {
           BACKUP_JOB_SESSION_TYPES.includes(session.sessionType)
         );
 
-        console.log(`[get-running-backup-jobs] Filtrado: ${backupJobsSessions.length} backup jobs de ${allSessions.length} sessions totais`);
+        console.log(`[veeam_list_running_backup_jobs] Filtrado: ${backupJobsSessions.length} backup jobs de ${allSessions.length} sessions totais`);
 
         // Substituir array original com apenas backup jobs
         sessionsData.data = backupJobsSessions;
@@ -99,26 +99,26 @@ export default function(server) {
               stateFilter: "Working (state=3)",
               typeFilter: `Apenas backup jobs: ${BACKUP_JOB_SESSION_TYPES.join(', ')}`,
               meaning: "Nenhum backup real está rodando agora",
-              note: "System tasks (MalwareDetection, SureBackup, etc) não aparecem aqui - use get-running-sessions para ver tudo",
+              note: "System tasks (MalwareDetection, SureBackup, etc) não aparecem aqui - use veeam_list_running_sessions para ver tudo",
               possibleReasons: [
                 "Todos os backups foram concluídos",
                 "Backups estão agendados para horários futuros",
                 "Nenhum backup foi iniciado manualmente",
                 "Backups podem estar parados ou desabilitados",
-                "Pode haver apenas system tasks rodando (use get-running-sessions para ver)"
+                "Pode haver apenas system tasks rodando (use veeam_list_running_sessions para ver)"
               ],
               nextSteps: [
-                "Use get-running-sessions para ver se há system tasks rodando",
-                "Use get-backup-sessions para ver histórico completo",
-                "Use get-backup-jobs para verificar configuração de jobs",
-                "Verifique schedules dos jobs com get-job-schedule"
+                "Use veeam_list_running_sessions para ver se há system tasks rodando",
+                "Use veeam_list_backup_sessions para ver histórico completo",
+                "Use veeam_list_backup_jobs para verificar configuração de jobs",
+                "Verifique schedules dos jobs com veeam_get_backup_job_schedule"
               ]
             }
           };
 
           const enrichedResponse = enrichListResponse(
             [],
-            "get-running-backup-jobs",
+            "veeam_list_running_backup_jobs",
             { stateFilter: "Working", typeFilter: `Manual filter: ${BACKUP_JOB_SESSION_TYPES.join(', ')}` },
             { limit, skip: 0, total: 0 }
           );
@@ -215,7 +215,7 @@ export default function(server) {
         // Aplicar enriquecimento de lista
         const enrichedResponse = enrichListResponse(
           responseData.backupJobs,
-          "get-running-backup-jobs",
+          "veeam_list_running_backup_jobs",
           { stateFilter: "Working", typeFilter: typeFilter },
           sessionsData.pagination
         );
@@ -229,18 +229,18 @@ export default function(server) {
         return createMCPResponse(addPerformanceMetrics(finalResponse, startTime));
 
       } catch (error) {
-        console.error('[get-running-backup-jobs] Erro:', error);
+        console.error('[veeam_list_running_backup_jobs] Erro:', error);
 
         const errorResponse = {
           error: true,
           message: error.message,
-          tool: "get-running-backup-jobs",
+          tool: "veeam_list_running_backup_jobs",
           timestamp: new Date().toISOString(),
           troubleshooting: {
             tips: [
               "Verifique conectividade com o VBR server",
               "Confirme que credenciais estão corretas no .env",
-              "Use get-running-sessions para ver todas as sessions (incluindo system tasks)"
+              "Use veeam_list_running_sessions para ver todas as sessions (incluindo system tasks)"
             ]
           }
         };

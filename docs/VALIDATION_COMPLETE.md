@@ -100,16 +100,16 @@ A implementação de **Description Features para operações MSP multi-cliente**
 ┌──────────────────────────────────────────┐
 │ Tool                         Status      │
 ├──────────────────────────────────────────┤
-│ get-server-info              ✅ PASS    │
-│ get-license-info             ✅ PASS    │
-│ get-backup-jobs              ✅ PASS    │
-│ get-backup-sessions          ✅ PASS    │
-│ get-backup-proxies           ✅ PASS    │
-│ get-backup-repositories      ✅ PASS    │
-│ get-running-sessions         ✅ PASS    │
-│ get-failed-sessions          ✅ PASS    │
-│ get-backup-copy-jobs         ✅ PASS    │
-│ get-restore-points           ✅ PASS    │
+│ veeam_get_server_info              ✅ PASS    │
+│ veeam_get_license_info             ✅ PASS    │
+│ veeam_list_backup_jobs              ✅ PASS    │
+│ veeam_list_backup_sessions          ✅ PASS    │
+│ veeam_list_backup_proxies           ✅ PASS    │
+│ veeam_list_backup_repositories      ✅ PASS    │
+│ veeam_list_running_sessions         ✅ PASS    │
+│ veeam_list_failed_sessions          ✅ PASS    │
+│ veeam_list_backup_copy_jobs         ✅ PASS    │
+│ veeam_list_restore_points           ✅ PASS    │
 ├──────────────────────────────────────────┤
 │ TOTAL PASS RATE              100%       │
 └──────────────────────────────────────────┘
@@ -153,10 +153,10 @@ A implementação de **Description Features para operações MSP multi-cliente**
 - [x] Enrichment de job objects
 
 ### ✅ Tool Integration
-- [x] `get-backup-jobs` + descriptionFilter
-- [x] `get-backup-copy-jobs` + descriptionFilter
-- [x] `start-backup-job` retorna description
-- [x] `stop-backup-job` retorna description
+- [x] `veeam_list_backup_jobs` + descriptionFilter
+- [x] `veeam_list_backup_copy_jobs` + descriptionFilter
+- [x] `veeam_start_backup_job` retorna description
+- [x] `veeam_stop_backup_job` retorna description
 
 ### ✅ Testing
 - [x] 30 unit tests
@@ -298,10 +298,10 @@ descriptionFilter: "Premium"
 
 ### Source Code
 - 📝 `lib/description-helpers.js` - Main library (6 functions)
-- 📝 `tools/get-backup-jobs-tool.js` - Updated with descriptionFilter
-- 📝 `tools/get-backup-copy-jobs-tool.js` - Updated with descriptionFilter
-- 📝 `tools/start-backup-job-tool.js` - Returns description
-- 📝 `tools/stop-backup-job-tool.js` - Returns description
+- 📝 `tools/veeam_list_backup_jobs-tool.js` - Updated with descriptionFilter
+- 📝 `tools/veeam_list_backup_copy_jobs-tool.js` - Updated with descriptionFilter
+- 📝 `tools/veeam_start_backup_job-tool.js` - Returns description
+- 📝 `tools/veeam_stop_backup_job-tool.js` - Returns description
 
 ---
 
