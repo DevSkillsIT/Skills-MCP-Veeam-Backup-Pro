@@ -14,6 +14,8 @@ import { randomUUID } from 'crypto';
 import { mcpAuthMiddleware } from "./lib/mcp-auth-middleware.js";
 import { getMCPToolsList, isValidTool, getToolSchema } from "./lib/mcp-tools-dictionary.js";
 import { VEEAM_PROMPTS, handleGetPrompt } from "./lib/prompts.js";
+import { formatToolResponse } from "./lib/formatters/response-formatter.js";
+import { listResources, readResource } from "./lib/resources.js";
 
 // Get the directory path
 const __filename = fileURLToPath(import.meta.url);
@@ -180,17 +182,36 @@ function generateOpenAPISchema(toolName, toolFunction) {
  * Handshake obrigatório do protocolo MCP
  */
 async function handleMCPInitialize() {
-  console.log('[MCP] 🤝 Initialize request recebida');
+  console.log('[MCP] Initialize request recebida');
   return {
     protocolVersion: '2024-11-05',
     capabilities: {
       tools: {},
-      prompts: {}
+      prompts: {},
+      resources: {}
     },
     serverInfo: {
       name: 'veeam-backup',
-      version: '1.0.0'
-    }
+      version: '2.0.0'
+    },
+    instructions: `Veeam Backup & Replication MCP Server - Gerenciamento de backup e restauracao de VMs.
+
+=== CATEGORIAS DE TOOLS (12 total) ===
+Busca (search_*): veeam_search_backup_jobs, veeam_search_backup_sessions, veeam_search_restore_points, veeam_search_infrastructure
+Gerenciamento (manage_*): veeam_manage_backup_jobs, veeam_manage_backup_sessions
+Consulta (get_*): veeam_get_license_compliance, veeam_get_server_info
+Bridge MCP: veeam_list_mcp_resources, veeam_read_mcp_resource, veeam_list_mcp_prompts, veeam_get_mcp_prompt
+
+=== FORMATO DE PARAMETROS ===
+- Tools search_*: use limit (padrao 25, max 50) e skip para paginacao.
+- Tools manage_*: use action + jobId ou sessionId (formato UUID).
+- Tools get_*: sem parametros obrigatorios.
+
+=== DICAS ===
+- Todas as respostas sao Markdown (tabelas).
+- Use resources veeam:// para info estatica (servidor, licenca).
+- Prefira filtros (typeFilter, stateFilter, statusFilter, hours) para reduzir resultados.
+- Para troubleshooting: veeam_search_backup_sessions com statusFilter=Failed e hours=24.`
   };
 }
 
@@ -235,13 +256,13 @@ async function handleMCPPromptsGet(params) {
 async function handleMCPToolCall(params) {
   const { name, arguments: args } = params;
 
-  console.log(`[MCP] 🔧 Executando tool: ${name}`);
+  console.log(`[MCP] Executando tool: ${name}`);
 
   // Validar se tool existe
   if (!isValidTool(name)) {
     const availableTools = Array.from(loadedTools.keys()).join(', ');
     throw new Error(
-      `Tool desconhecida: "${name}". ` +
+      `Tool desconhecida: "${originalName}". ` +
       `Tools disponíveis: ${availableTools}`
     );
   }
@@ -278,9 +299,27 @@ async function handleMCPToolCall(params) {
   const result = await mockServer.currentHandler(args);
   const duration = Date.now() - startTime;
 
-  console.log(`[MCP] ✅ Tool "${name}" executada em ${duration}ms`);
+  console.log(`[MCP] Tool "${name}" executada em ${duration}ms`);
 
-  // Retornar resultado no formato MCP
+  // INTERCEPTOR MARKDOWN (SPEC-VEEAM-ENHANCE-001 / F01)
+  // Converte resposta JSON para Markdown antes de retornar.
+  // Durante transicao, tools existentes retornam JSON.stringify no content[0].text.
+  // O interceptor parseia e aplica o formatter Markdown.
+  if (result?.content?.[0]?.text) {
+    let data;
+    try {
+      data = JSON.parse(result.content[0].text);
+    } catch {
+      // Se nao e JSON, ja e string Markdown — retornar como esta
+      data = result.content[0].text;
+    }
+
+    const formatted = formatToolResponse(name, data, args);
+    if (formatted) {
+      result.content[0].text = formatted;
+    }
+  }
+
   return result;
 }
 
@@ -544,6 +583,16 @@ function createHttpServer() {
 
         case 'prompts/get':
           result = await handleMCPPromptsGet(params);
+          break;
+
+        case 'resources/list':
+          console.log('[MCP] Retornando lista de resources');
+          result = listResources();
+          break;
+
+        case 'resources/read':
+          console.log(`[MCP] Lendo resource: ${params?.uri}`);
+          result = await readResource(params?.uri);
           break;
 
         case 'notifications/initialized':
