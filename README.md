@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05%20HTTP%20Streamable-purple.svg)](https://modelcontextprotocol.io/)
-[![Tools](https://img.shields.io/badge/Tools-16-orange.svg)](#-ferramentas-disponíveis)
+[![Tools](https://img.shields.io/badge/Tools-12-orange.svg)](#-ferramentas-disponíveis)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-success.svg)](#)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue.svg)](#)
 [![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-Compatible-green.svg)](#)
@@ -145,30 +145,37 @@ Nosso servidor executa **dois protocolos simultaneamente** em um único processo
 - **Modo Híbrido**: Execute ambos simultaneamente (recomendado)
 - **Zero Dependências Externas**: Sem necessidade de MCPO ou proxies
 
-### 🛠️ 16 Ferramentas Veeam Abrangentes
+### 🛠️ 12 Ferramentas Veeam (v2.0.0)
 
-| Categoria | Ferramenta | Descrição | Método | Destrutivo | Tipo |
-|-----------|------------|-----------|---------|------------|------|
-| **Jobs** | `veeam_list_backup_jobs` | Lista todos os jobs de backup configurados (busca semântica) | GET | Não | Leitura |
-| **Jobs** | `veeam_list_backup_copy_jobs` | Lista Backup Copy jobs (3-2-1 compliance) | GET | Não | Leitura |
-| **Jobs** | `veeam_get_backup_job_details` | Informações detalhadas de job específico | GET | Não | Leitura |
-| **Jobs** | `veeam_get_backup_job_schedule` | Detalhes de scheduling de um job | GET | Não | Leitura |
-| **Sessões** | `veeam_list_backup_sessions` | Histórico de execuções de backup | GET | Não | Leitura |
-| **Sessões** | `veeam_list_running_sessions` | Lista TODAS as sessions em execução (backup jobs + system tasks) | GET | Não | Leitura |
-| **Sessões** | `veeam_list_running_backup_jobs` | Lista APENAS backup jobs em execução (exclui system tasks) | GET | Não | Leitura |
-| **Sessões** | `veeam_list_failed_sessions` | Lista sessions que falharam (troubleshooting) | GET | Não | Leitura |
-| **Sessões** | `veeam_get_session_log` | Logs detalhados de uma session | GET | Não | Leitura |
-| **Restore** | `veeam_list_restore_points` | Lista restore points de uma VM (busca semântica) | GET | Não | Leitura |
-| **Infraestrutura** | `veeam_list_backup_proxies` | Status dos servidores proxy | GET | Não | Leitura |
-| **Armazenamento** | `veeam_list_backup_repositories` | Informações de repositórios | GET | Não | Leitura |
-| **Licenciamento** | `veeam_get_license_info` | Detalhes da licença Veeam | GET | Não | Leitura |
-| **Servidor** | `veeam_get_server_info` | Informações do servidor VBR | GET | Não | Leitura |
-| **Controle** | `veeam_start_backup_job` | Inicia job de backup sob demanda | POST | Sim | Escrita (Safety Guard) |
-| **Controle** | `veeam_stop_backup_job` | Para job de backup em execução | POST | Sim | Escrita (Safety Guard) |
+| Categoria | Ferramenta | Descrição |
+|-----------|------------|-----------|
+| **Busca** | `veeam_search_backup_jobs` | Jobs de backup (VMs, replicação, cópia) |
+| **Busca** | `veeam_search_backup_sessions` | Sessions/histórico de execuções |
+| **Busca** | `veeam_search_restore_points` | Pontos de restauração de VMs |
+| **Busca** | `veeam_search_infrastructure` | Proxies e repositórios de backup |
+| **Gerenciamento** | `veeam_manage_backup_jobs` | Detalhes, schedule, iniciar ou parar jobs |
+| **Gerenciamento** | `veeam_manage_backup_sessions` | Logs de sessions para troubleshooting |
+| **Consulta** | `veeam_get_license_compliance` | Licenciamento, compliance e workloads |
+| **Consulta** | `veeam_get_server_info` | Versão do VBR, banco de dados, build |
+| **Bridge** | `veeam_list_mcp_resources` | Catálogo de resources MCP disponíveis |
+| **Bridge** | `veeam_read_mcp_resource` | Leitura de resources via URI veeam:// |
+| **Bridge** | `veeam_list_mcp_prompts` | Catálogo de 15 prompts disponíveis |
+| **Bridge** | `veeam_get_mcp_prompt` | Execução de prompt/workflow específico |
 
-**Safety Guard:** Ferramentas de escrita requerem `confirmationToken` e `reason` para execução segura.
+**Pattern:** `search_*` (somente leitura) / `manage_*` (leitura + escrita) / `get_*` (recurso único)
 
-**🔍 Busca Semântica:** Ferramentas `veeam_list_backup_jobs` e `veeam_list_restore_points` suportam busca semântica inteligente (multi-palavra, normalização de acentos, busca parcial).
+**🔍 Busca Semântica:** Ferramentas `veeam_search_backup_jobs` e `veeam_search_restore_points` suportam busca semântica inteligente (multi-palavra, normalização de acentos, busca parcial).
+
+### v2.0.0 Melhorias
+
+- **91% redução de tokens**: Respostas Markdown em vez de JSON bruto
+- **12 tools consolidadas**: Pattern search_*/manage_*/get_* (Block recommendation)
+- **Tool Annotations**: readOnlyHint, destructiveHint, openWorldHint em todas as tools
+- **Server Instructions**: Guia operacional para LLM no initialize
+- **MCP Resources**: Dados estáticos (server-info, license) via URI veeam://
+- **Bridge Tools MCPHub**: Resources e Prompts acessíveis via tools
+- **Validação UUID**: Erros claros antes de chamar API
+- **Testes automatizados**: 74 testes (unit + integration)
 
 ### 🔒 Autenticação Automática Inteligente
 
@@ -441,825 +448,117 @@ pm2 start vbr-mcp-server.js --name mcp-veeam-http -- --http --port=8825
 
 ---
 
-## 🛠️ Ferramentas Disponíveis
+## Ferramentas Disponíveis (v2.0.0)
 
-Descrições detalhadas das 16 ferramentas MCP com exemplos práticos, parâmetros e casos de uso reais.
+O Veeam MCP v2.0.0 consolidou as 17 ferramentas originais em 12 ferramentas otimizadas seguindo o padrão search_*/manage_*/get_* (Block recommendation). Todas as respostas são formatadas em Markdown (redução de ~91% em tokens vs JSON bruto).
 
----
+### Ferramentas de Busca (search_*) — Somente Leitura
 
-### 1. **veeam_list_backup_jobs** - Listar Jobs de Backup
+| Tool | Descrição | Parâmetros Principais |
+|---|---|---|
+| `veeam_search_backup_jobs` | Jobs de backup (VMs, replicação, cópia) | typeFilter, stateFilter, nameFilter, limit |
+| `veeam_search_backup_sessions` | Sessions/histórico de execuções | statusFilter (Running/Failed/Success), scope, hours |
+| `veeam_search_restore_points` | Pontos de restauração de VMs | vmName ou vmId |
+| `veeam_search_infrastructure` | Proxies e repositórios de backup | type (proxies/repositories) |
 
-Lista todos os jobs de backup configurados no Veeam VBR com informações detalhadas sobre configuração, agendamento e última execução.
+### Ferramentas de Gerenciamento (manage_*) — Leitura + Escrita
 
-**Descrição Completa:**
-Retorna lista completa de jobs de backup (ativos, desabilitados, em manutenção). Essencial para dashboards de monitoramento, validação de políticas de backup e auditoria de compliance.
+| Tool | Descrição | Actions |
+|---|---|---|
+| `veeam_manage_backup_jobs` | Detalhes, schedule, iniciar ou parar jobs | get_details, get_schedule, start, stop |
+| `veeam_manage_backup_sessions` | Logs de sessions para troubleshooting | get_log (com logLevel filter) |
 
-**Parâmetros:**
-- `nameFilter` (opcional): Busca semântica no nome do job (multi-palavra, acentos, parcial)
-- `descriptionFilter` (opcional): Busca semântica na descrição (suporta nomes de clientes MSP)
+### Ferramentas de Consulta (get_*) — Somente Leitura
 
-**Retorno JSON:**
-- `id`: UUID do job (formato URN)
-- `name`: Nome descritivo do job
-- `type`: Tipo (Backup, BackupCopy, Replica)
-- `jobType`: Subtipo (Incremental, Full, Differential)
-- `isEnabled`: Se o job está habilitado
-- `scheduleEnabled`: Se agendamento está ativo
-- `nextRun`: Próxima execução (ISO 8601)
-- `lastResult`: Resultado (Success, Warning, Failed)
-- `lastRunTime`: Última execução (timestamp)
-- `targetRepository`: Repositório de destino
+| Tool | Descrição |
+|---|---|
+| `veeam_get_license_compliance` | Licenciamento, compliance e workloads protegidos |
+| `veeam_get_server_info` | Versão do VBR, banco de dados, build |
 
-**Casos de Uso:**
-1. Dashboard de monitoramento geral
-2. Auditoria de compliance (validar cobertura)
-3. Planejamento de janelas de manutenção
-4. Troubleshooting de jobs falhando
-5. Relatórios executivos de cobertura
+### Bridge Tools MCPHub
 
-**Uso em Linguagem Natural:**
-- "Mostre todos os jobs de backup configurados"
-- "Liste jobs desabilitados"
-- "Quais jobs rodam hoje à noite?"
-- "Jobs que fazem backup do SQL-PROD"
-- "Jobs com status Failed na última execução"
-- **🔍 Busca semântica:** "Jobs do cliente Gráfica" (encontra "Gráfica" mesmo sem acento)
-- **🔍 Multi-palavra:** "SK VCENTER" (busca "SK" e "VCENTER" separadamente)
+| Tool | Descrição |
+|---|---|
+| `veeam_list_mcp_resources` | Catálogo de resources MCP disponíveis |
+| `veeam_read_mcp_resource` | Leitura de resources via URI veeam:// |
+| `veeam_list_mcp_prompts` | Catálogo de 15 prompts disponíveis |
+| `veeam_get_mcp_prompt` | Execução de prompt/workflow específico |
 
-**Curl Example:**
+### MCP Resources (Dados Estáticos)
+
+| URI | Descrição |
+|---|---|
+| `veeam://server-info` | Informações do servidor VBR |
+| `veeam://license` | Dados de licenciamento e workloads |
+
+### Exemplos de Uso
+
+**Buscar sessions com falha das últimas 24h:**
 ```bash
 curl -X POST http://localhost:8825/mcp \
   -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_backup_jobs","arguments":{}},
-    "id":1
-  }'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_search_backup_sessions","arguments":{"statusFilter":"Failed","hours":24,"limit":10}},"id":1}'
 ```
 
----
-
-### 2. **veeam_list_backup_copy_jobs** - Jobs de Backup Copy (3-2-1 Compliance)
-
-Lista jobs de Backup Copy configurados para compliance com regra 3-2-1 (3 cópias, 2 mídias diferentes, 1 offsite).
-
-**Descrição Completa:**
-Backup Copy jobs replicam backups existentes para repositório secundário. Crítico para disaster recovery e compliance regulatório.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- `id`: UUID do job
-- `name`: Nome do job copy
-- `source`: Job de origem
-- `targetRepository`: Repositório secundário
-- `scheduleType`: Tipo de agendamento
-- `retentionPolicy`: Política de retenção
-- `isEnabled`: Status ativo/inativo
-
-**Casos de Uso:**
-1. Validar compliance 3-2-1
-2. Verificar replicação offsite
-3. Auditoria SOX/HIPAA
-4. Planejamento de DR
-5. Otimização de custos de storage
-
-**Uso em Linguagem Natural:**
-- "Liste jobs de backup copy"
-- "Quais backups estão sendo replicados offsite?"
-- "Jobs copy para compliance 3-2-1"
-- "Backup copy com falhas"
-- "Repositórios secundários em uso"
-
-**Curl Example:**
+**Ver detalhes de um job:**
 ```bash
 curl -X POST http://localhost:8825/mcp \
   -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_backup_copy_jobs","arguments":{}},
-    "id":1
-  }'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_manage_backup_jobs","arguments":{"action":"get_details","jobId":"UUID-DO-JOB"}},"id":1}'
 ```
 
----
-
-### 3. **veeam_get_backup_job_details** - Detalhes Completos de Job Específico
-
-Obtém informações detalhadas de um job incluindo configuração, objetos protegidos, últimas sessões e agendamento.
-
-**Descrição Completa:**
-Fornece visão completa de um job específico. Útil para troubleshooting, análise de performance e validação de configuração.
-
-**Parâmetros:**
-- `jobId`: UUID do job (obrigatório)
-
-**Retorno JSON:**
-- Configuração completa do job
-- Últimas 10 sessões de execução
-- Lista de VMs/objetos protegidos
-- Configuração de agendamento
-- Repositório alvo
-- Política de retenção
-- Statistics (taxa de sucesso, duração média)
-
-**Casos de Uso:**
-1. Troubleshooting de job específico
-2. Análise de performance
-3. Validação de objetos protegidos
-4. Auditoria de configuração
-5. Relatórios de SLA
-
-**Uso em Linguagem Natural:**
-- "Detalhes do job SQL-Backup-Daily"
-- "Configuração completa do VM-Production"
-- "Últimas execuções do Exchange-Backup"
-- "Quais VMs estão no job Prod-Servers?"
-- "Taxa de sucesso do job File-Server-Backup"
-
-**Curl Example:**
+**Verificar uso de repositórios:**
 ```bash
 curl -X POST http://localhost:8825/mcp \
   -H 'Authorization: Bearer TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_get_backup_job_details","arguments":{"jobId":"urn:veeam:Job:..."}},
-    "id":1
-  }'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_search_infrastructure","arguments":{"type":"repositories"}},"id":1}'
 ```
 
----
+### Tool Annotations
 
-### 4. **veeam_get_backup_job_schedule** - Agendamento de Job
+Todas as ferramentas possuem annotations MCP para segurança automática:
 
-Retorna detalhes do agendamento configurado para um job específico.
+| Annotation | Significado | Exemplo |
+|---|---|---|
+| `readOnlyHint: true` | Não modifica dados (auto-aprovável) | search_*, get_* |
+| `destructiveHint: true` | Pode modificar dados (requer confirmação) | manage_backup_jobs (start/stop) |
+| `openWorldHint: true` | Acessa API externa (latência possível) | Todas exceto list_mcp_* |
+| `idempotentHint: true` | Chamadas repetidas são seguras | search_*, get_* |
 
-**Descrição Completa:**
-Mostra quando e como um job está agendado para executar (diário, semanal, contínuo).
+### Formato de Resposta: Markdown
 
-**Parâmetros:**
-- `jobId`: UUID do job
+Todas as respostas são formatadas em Markdown (tabelas), não JSON bruto:
 
-**Retorno JSON:**
-- `scheduleType`: Tipo (Daily, Weekly, Monthly, Continuous)
-- `startTime`: Hora de início
-- `daysOfWeek`: Dias da semana
-- `retrySettings`: Configuração de retry
-- `nextRun`: Próxima execução
+```markdown
+**5 resultados** | Pagina 1 (total: 9646, limit: 5)
 
-**Casos de Uso:**
-1. Planejamento de janelas de manutenção
-2. Otimização de horários
-3. Validação de SLA
-4. Resolução de conflitos de agenda
-5. Auditoria de compliance temporal
-
-**Uso em Linguagem Natural:**
-- "Quando roda o job SQL-Daily?"
-- "Agendamento do VM-Production"
-- "Próxima execução do Exchange-Backup"
-- "Jobs que rodam às 22h"
-- "Configuração de retry do FileServer-Backup"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_get_backup_job_schedule","arguments":{"jobId":"urn:veeam:Job:..."}},
-    "id":1
-  }'
+| ID | Nome | Tipo | Resultado | Inicio | Duracao | Progresso |
+|---|---|---|---|---|---|---|
+| 12dc2486... | BKP-JOB-LOCAL-SK-PMW... | BackupJob | Sucesso | 22/03/2026 12:00 | 5 min | 100% |
 ```
 
----
-
-### 5. **veeam_list_backup_sessions** - Histórico de Execuções de Backup
-
-Obtém histórico de sessões de backup (execuções passadas) com filtros por job, período ou status.
-
-**Descrição Completa:**
-Retorna lista de sessões executadas com status, duração, dados processados e resultado.
-
-**Parâmetros:**
-- `jobId`: Filtrar por job (opcional)
-- `limit`: Máximo de sessões (padrão: 100)
-- `stateFilter`: Filtrar por estado
-- `resultFilter`: Filtrar por resultado
-
-**Retorno JSON:**
-- `sessionId`: UUID da sessão
-- `jobName`: Nome do job
-- `state`: Estado (Working, Stopped, Failed)
-- `result`: Resultado (Success, Warning, Failed)
-- `startTime`: Início (ISO 8601)
-- `endTime`: Fim
-- `duration`: Duração total
-- `processedSize`: Dados processados (bytes)
-- `transferredSize`: Dados transferidos
-- `avgSpeed`: Velocidade média (MB/s)
-
-**Casos de Uso:**
-1. Troubleshooting de falhas
-2. Análise de performance histórica
-3. Relatórios de SLA
-4. Validação de janelas de backup
-5. Otimização de recursos
-
-**Uso em Linguagem Natural:**
-- "Últimos 50 backups executados"
-- "Backups que falharam ontem"
-- "Histórico do VM-Production-Backup"
-- "Sessões com warnings esta semana"
-- "Backups mais lentos do mês"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_backup_sessions","arguments":{"limit":50}},
-    "id":1
-  }'
-```
-
----
-
-### 6. **veeam_list_running_sessions** - Sessões em Execução (Todas)
-
-Lista TODAS as sessões atualmente em execução (backup jobs + system tasks).
-
-**Descrição Completa:**
-Mostra tudo que está rodando no Veeam VBR neste momento, incluindo backups, replicas, copy jobs e tarefas do sistema.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- `sessionId`: UUID
-- `jobName`: Nome do job
-- `state`: Estado (Working)
-- `progress`: Percentual (0-100)
-- `currentVm`: VM sendo processada
-- `startTime`: Início da sessão
-- `estimatedTimeLeft`: Tempo restante estimado
-- `processedObjects`: Objetos já processados
-- `totalObjects`: Total de objetos
-
-**Casos de Uso:**
-1. Monitoramento em tempo real
-2. Identificar jobs travados
-3. Validar progresso de backups
-4. Otimização de recursos
-5. Troubleshooting de lentidão
-
-**Uso em Linguagem Natural:**
-- "O que está rodando agora?"
-- "Backups em execução"
-- "Progresso do job VM-Production"
-- "Jobs travados ou lentos"
-- "Qual VM está sendo processada no job SQL?"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_running_sessions","arguments":{}},
-    "id":1
-  }'
-```
-
----
-
-### 7. **veeam_list_running_backup_jobs** - Backup Jobs em Execução (Filtrado)
-
-Lista APENAS backup jobs em execução, EXCLUINDO system tasks e outros tipos de sessão.
-
-**Descrição Completa:**
-Versão filtrada de `veeam_list_running_sessions` mostrando apenas jobs de backup ativos. Ideal para dashboards focados.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- Mesmo formato de `veeam_list_running_sessions`
-- Apenas jobs do tipo Backup
-
-**Casos de Uso:**
-1. Dashboard específico de backups
-2. Alertas de jobs longos
-3. Validação de janela de backup
-4. Relatórios operacionais
-5. Automação condicional
-
-**Uso em Linguagem Natural:**
-- "Quais backups estão rodando?"
-- "Jobs de backup ativos agora"
-- "Backups em andamento"
-- "Jobs de backup há mais de 2 horas"
-- "Próximo backup a iniciar"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_running_backup_jobs","arguments":{}},
-    "id":1
-  }'
-```
-
----
-
-### 8. **veeam_list_failed_sessions** - Sessões com Falha (Troubleshooting)
-
-Lista sessões que falharam nas últimas X horas. Crítico para troubleshooting e alertas.
-
-**Descrição Completa:**
-Ferramenta focada em falhas. Retorna apenas sessões Failed/Warning para análise rápida.
-
-**Parâmetros:**
-- `hours`: Janela temporal (padrão: 24h, máx: 168h)
-- `limit`: Máximo de resultados
-
-**Retorno JSON:**
-- Sessões com `result`: Failed ou Warning
-- `errorMessage`: Mensagem de erro
-- `failedVms`: VMs que falharam
-- `warningCount`: Quantidade de warnings
-- `errorCode`: Código do erro Veeam
-
-**Casos de Uso:**
-1. Troubleshooting matinal
-2. Alertas automáticos
-3. Análise de tendências de falha
-4. Priorização de correções
-5. Relatórios de incidentes
-
-**Uso em Linguagem Natural:**
-- "Backups que falharam hoje"
-- "Falhas nas últimas 48 horas"
-- "Jobs com warnings ontem"
-- "Qual erro no job SQL-Backup?"
-- "VMs que falharam no último backup"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_failed_sessions","arguments":{"hours":24}},
-    "id":1
-  }'
-```
-
----
-
-### 9. **veeam_get_session_log** - Logs Detalhados de Sessão
-
-Retorna logs completos de uma sessão específica para troubleshooting profundo.
-
-**Descrição Completa:**
-Extrai logs linha a linha de uma sessão. Essencial para diagnóstico de erros complexos.
-
-**Parâmetros:**
-- `sessionId`: UUID da sessão (obrigatório)
-- `logLevel`: Filtro (All, Info, Warning, Error) - padrão: All
-
-**Retorno JSON:**
-- `logs`: Array de linhas de log
-- `timestamp`: Timestamp de cada linha
-- `level`: Nível (Info, Warning, Error)
-- `message`: Mensagem do log
-- `component`: Componente Veeam
-
-**Casos de Uso:**
-1. Diagnóstico de erros específicos
-2. Análise de performance granular
-3. Suporte técnico Veeam
-4. Auditoria detalhada
-5. Troubleshooting avançado
-
-**Uso em Linguagem Natural:**
-- "Logs da última sessão do SQL-Backup"
-- "Erros da sessão 123abc"
-- "Log completo do backup que falhou ontem"
-- "Warnings da sessão mais recente"
-- "O que causou o erro no backup do Exchange?"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_get_session_log","arguments":{"sessionId":"abc-123","logLevel":"Error"}},
-    "id":1
-  }'
-```
-
----
-
-### 10. **veeam_list_restore_points** - Restore Points de VM
-
-Lista restore points disponíveis para uma VM específica. Essencial para planejamento de restore.
-
-**Descrição Completa:**
-Mostra todos os pontos de restauração de uma VM, incluindo data, tipo e repositório.
-
-**Parâmetros:**
-- `vmId`: ID da VM (opcional)
-- `vmName`: Nome da VM (opcional, **busca semântica** multi-palavra e acentos)
-- `limit`: Máximo de restore points
-
-**Retorno JSON:**
-- `vmName`: Nome da VM
-- `restorePoints`: Array de pontos
-- `creationTime`: Data de criação (ISO 8601)
-- `type`: Tipo (Full, Incremental, Differential)
-- `repository`: Repositório onde está
-- `isConsistent`: Se é application-consistent
-- `size`: Tamanho do restore point
-
-**Casos de Uso:**
-1. Planejamento de restore
-2. Validação de retenção
-3. Auditoria de compliance
-4. Troubleshooting de missing backups
-5. Relatórios de RPO
-
-**Uso em Linguagem Natural:**
-- "Restore points do SQL-SERVER-01"
-- "Backups disponíveis da VM Exchange"
-- "Pontos de restauração mais antigos"
-- "Restore points full da VM-PROD"
-- "Qual o último backup da VM-FILE-01?"
-- **🔍 Busca semântica:** "Restore points da Grafica" (encontra VM com "Gráfica")
-- **🔍 Multi-palavra:** "Backups SK SERVER" (busca VMs com "SK" e "SERVER")
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_restore_points","arguments":{"vmName":"SQL-SERVER-01"}},
-    "id":1
-  }'
-```
-
----
-
-### 11. **veeam_list_backup_proxies** - Status dos Servidores Proxy
-
-Lista proxies de backup com status de saúde, carga atual e capacidade.
-
-**Descrição Completa:**
-Proxies processam dados de backup. Monitorar saúde é crítico para performance.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- `name`: Nome do proxy
-- `type`: Tipo (VMware, Hyper-V)
-- `status`: Status (Online, Offline, Maintenance)
-- `currentTasks`: Tarefas em execução
-- `maxTasks`: Capacidade máxima
-- `utilizationPercent`: % de utilização
-- `host`: Host onde está instalado
-
-**Casos de Uso:**
-1. Otimização de performance
-2. Balanceamento de carga
-3. Troubleshooting de lentidão
-4. Planejamento de capacidade
-5. Monitoramento de saúde
-
-**Uso em Linguagem Natural:**
-- "Status dos proxies de backup"
-- "Proxies sobrecarregados"
-- "Quantos proxies estão online?"
-- "Proxy com mais tarefas"
-- "Capacidade disponível nos proxies"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_backup_proxies","arguments":{}},
-    "id":1
-  }'
-```
-
----
-
-### 12. **veeam_list_backup_repositories** - Informações de Repositórios de Backup
-
-Lista repositórios com capacidade, espaço livre e alertas de threshold.
-
-**Descrição Completa:**
-Repositórios armazenam backups. Monitorar espaço é crítico para evitar falhas.
-
-**Parâmetros:**
-- `threshold`: % de alerta (padrão: 20%)
-
-**Retorno JSON:**
-- `name`: Nome do repositório
-- `type`: Tipo (Windows, Linux, S3, etc.)
-- `path`: Caminho do storage
-- `capacity`: Capacidade total (bytes)
-- `freeSpace`: Espaço livre (bytes)
-- `freePercent`: % livre
-- `status`: Status (OK, Warning, Critical)
-- `isRotatedDrive`: Se é rotated drive
-
-**Casos de Uso:**
-1. Alertas de espaço em disco
-2. Planejamento de expansão
-3. Otimização de retenção
-4. Troubleshooting de falhas
-5. Relatórios de capacidade
-
-**Uso em Linguagem Natural:**
-- "Espaço livre nos repositórios"
-- "Repositórios com menos de 10% livre"
-- "Capacidade total de storage"
-- "Repositório mais cheio"
-- "Alertas de espaço em disco"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_list_backup_repositories","arguments":{"threshold":20}},
-    "id":1
-  }'
-```
-
----
-
-### 13. **veeam_get_license_info** - Informações de Licença Veeam
-
-Retorna detalhes da licença Veeam: tipo, validade, capacidade e uso.
-
-**Descrição Completa:**
-Monitora licenciamento para evitar expiração e overuse. Crítico para compliance.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- `licenseType`: Tipo (Evaluation, Rental, Perpetual)
-- `edition`: Edição (Community, Standard, Enterprise, Enterprise Plus)
-- `expirationDate`: Data de expiração
-- `status`: Status (Valid, Expired, Grace Period)
-- `licensedInstances`: Instâncias licenciadas
-- `usedInstances`: Instâncias em uso
-- `supportExpirationDate`: Fim do suporte
-
-**Casos de Uso:**
-1. Alertas de expiração
-2. Planejamento de renovação
-3. Auditoria de compliance
-4. Validação de capacidade
-5. Relatórios executivos
-
-**Uso em Linguagem Natural:**
-- "Status da licença Veeam"
-- "Quando expira minha licença?"
-- "Quantas instâncias estou usando?"
-- "Tenho licenças disponíveis?"
-- "Edição da licença Veeam"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_get_license_info","arguments":{}},
-    "id":1
-  }'
-```
-
----
-
-### 14. **veeam_get_server_info** - Informações do Servidor Veeam VBR
-
-Retorna informações do servidor Veeam: versão, hostname, uptime e configuração.
-
-**Descrição Completa:**
-Visão geral do servidor Veeam. Útil para troubleshooting e auditoria.
-
-**Parâmetros:**
-- Nenhum
-
-**Retorno JSON:**
-- `serverName`: Nome do servidor
-- `version`: Versão Veeam (ex: 12.1.2.172)
-- `build`: Build number
-- `installDate`: Data de instalação
-- `databaseType`: Tipo de DB (SQL Server)
-- `databaseSize`: Tamanho do DB
-- `cloudConnectEnabled`: Cloud Connect ativo
-- `backupServerRole`: Papel do servidor
-
-**Casos de Uso:**
-1. Validação de versão
-2. Planejamento de upgrade
-3. Troubleshooting de compatibilidade
-4. Auditoria de infraestrutura
-5. Documentação técnica
-
-**Uso em Linguagem Natural:**
-- "Versão do Veeam VBR"
-- "Informações do servidor de backup"
-- "Quando foi instalado o Veeam?"
-- "Tamanho do banco de dados Veeam"
-- "Cloud Connect está habilitado?"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{"name":"veeam_get_server_info","arguments":{}},
-    "id":1
-  }'
-```
-
----
-
-### 15. **veeam_start_backup_job** - Iniciar Job de Backup Sob Demanda 🔐 SAFETY GUARD
-
-Inicia execução manual de job de backup. **OPERAÇÃO CRÍTICA** protegida por Safety Guard.
-
-**Descrição Completa:**
-Dispara backup fora do agendamento. Requer confirmação explícita devido ao impacto em recursos.
-
-**⚠️ SAFETY GUARD ATIVO:**
-Esta ferramenta requer:
-- `confirmationToken`: Token único de confirmação
-- `reason`: Justificativa com mínimo 10 caracteres
-
-**Parâmetros:**
-- `jobId`: UUID do job (obrigatório)
-- `fullBackup`: Forçar full (padrão: false)
-- `reason`: Justificativa (obrigatório)
-- `confirmationToken`: Token MCP_SAFETY_TOKEN
-
-**Retorno JSON:**
-- `sessionId`: UUID da sessão iniciada
-- `jobName`: Nome do job
-- `startTime`: Hora de início
-- `estimatedDuration`: Duração estimada
-
-**Casos de Uso:**
-1. Backup emergencial antes de manutenção
-2. Teste de job recém-configurado
-3. Backup extra após mudanças críticas
-4. Recovery de janela perdida
-5. Validação de troubleshooting
-
-**Uso em Linguagem Natural:**
-- "Inicie backup do SQL-Daily agora"
-- "Execute job VM-Production imediatamente"
-- "Backup full do Exchange-Backup agora"
-- "Dispare backup do FileServer sob demanda"
-- "Inicie backup de emergência"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{
-      "name":"veeam_start_backup_job",
-      "arguments":{
-        "jobId":"urn:veeam:Job:...",
-        "fullBackup":false,
-        "reason":"Backup emergencial antes de upgrade do SQL Server",
-        "confirmationToken":"seu-token-aqui"
-      }
-    },
-    "id":1
-  }'
-```
-
----
-
-### 16. **veeam_stop_backup_job** - Parar Job de Backup em Execução 🔐 SAFETY GUARD
-
-Para job de backup em execução. **OPERAÇÃO DESTRUTIVA** protegida por Safety Guard.
-
-**Descrição Completa:**
-Interrompe backup em andamento. Pode causar restore points incompletos. Usar com cautela extrema.
-
-**⚠️ SAFETY GUARD ATIVO:**
-Esta ferramenta requer:
-- `confirmationToken`: Token único de confirmação
-- `reason`: Justificativa DETALHADA (mínimo 10 caracteres)
-
-**⚠️ AVISO:**
-Parar backup pode resultar em:
-- Restore point incompleto/corrompido
-- Reprocessamento na próxima execução
-- Impacto no RPO
-
-**Parâmetros:**
-- `jobId`: UUID do job (obrigatório)
-- `reason`: Justificativa detalhada (obrigatório)
-- `confirmationToken`: Token MCP_SAFETY_TOKEN
-
-**Retorno JSON:**
-- `sessionId`: UUID da sessão parada
-- `jobName`: Nome do job
-- `stopTime`: Hora de parada
-- `processedObjects`: Objetos já processados
-- `status`: Status final
-
-**Casos de Uso:**
-1. Job travado por mais de X horas
-2. Impacto em produção (lentidão)
-3. Manutenção emergencial
-4. Job iniciado por engano
-5. Troubleshooting de problemas
-
-**Uso em Linguagem Natural:**
-- "Pare o job SQL-Backup agora"
-- "Interrompa backup do VM-Production"
-- "Cancele execução do Exchange-Backup"
-- "Pare backup travado há 10 horas"
-- "Stop do job FileServer por manutenção"
-
-**Curl Example:**
-```bash
-curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "jsonrpc":"2.0",
-    "method":"tools/call",
-    "params":{
-      "name":"veeam_stop_backup_job",
-      "arguments":{
-        "jobId":"urn:veeam:Job:...",
-        "reason":"Job travado há 12 horas causando lentidão no storage",
-        "confirmationToken":"seu-token-aqui"
-      }
-    },
-    "id":1
-  }'
-```
+Benefícios do Markdown vs JSON bruto:
+- **91% menos tokens** por resposta (testado com dados reais)
+- Tabelas legíveis diretamente no chat
+- Paginação com informação de total
+
+### Limites de Paginação
+
+| Parâmetro | Default | Máximo |
+|---|---|---|
+| `limit` | 25 | 50 |
+| `skip` | 0 | — |
+
+Limites otimizados para evitar token explosion. Use `skip` para navegar páginas.
 
 ---
 
 ## 🔐 Nota sobre Safety Guard
 
-As ferramentas **veeam_start_backup_job** e **veeam_stop_backup_job** são protegidas por **Safety Guard** devido ao impacto potencial:
+As ações **start** e **stop** de `veeam_manage_backup_jobs` são protegidas por **Tool Annotations** (`destructiveHint: true`) devido ao impacto potencial:
 
 - **Requerem confirmação explícita** via token
 - **Justificativa obrigatória** com mínimo 10 caracteres
@@ -1845,7 +1144,7 @@ CHECKLIST DE VALIDAÇÃO:
 
 📋 NEXT STEPS:
 1. Executar checklist de validação
-2. Tentar backup manual (veeam_start_backup_job)
+2. Tentar backup manual (veeam_manage_backup_jobs action=start)
 3. Se persistir, validar SQL Server VSS Writers com DBA
 ```
 
@@ -2409,10 +1708,9 @@ Configure os endpoints individuais:
 > "Mostre todos os jobs de backup que falharam nas últimas 24 horas"
 
 **Processo:**
-1. Claude chama `veeam_list_backup_sessions` para obter histórico
-2. Filtra sessões com status "Failed"
-3. Filtra por data (últimas 24h)
-4. Apresenta resultado formatado
+1. Claude chama `veeam_search_backup_sessions` com statusFilter="Failed" e hours=24
+2. Recebe resultado já filtrado e formatado em Markdown
+3. Apresenta tabela com jobs falhados
 
 **Resposta Esperada:**
 ```
@@ -2437,7 +1735,7 @@ Encontrei 2 jobs com falha nas últimas 24 horas:
 > "Quais repositórios estão com mais de 80% de uso?"
 
 **Processo:**
-1. Claude chama `veeam_list_backup_repositories`
+1. Claude chama `veeam_search_infrastructure` com type="repositories"
 2. Calcula percentual de uso
 3. Filtra repositórios >80%
 4. Alerta sobre espaço crítico
@@ -2467,7 +1765,7 @@ Encontrei 2 jobs com falha nas últimas 24 horas:
 > "Me mostre o histórico de performance do job 'VM-Production-Backup' nos últimos 7 dias"
 
 **Processo:**
-1. Claude chama `veeam_get_backup_job_details` com nome do job
+1. Claude chama `veeam_manage_backup_jobs` com action="get_details" e jobId
 2. Analisa últimas sessões
 3. Calcula médias de duração e throughput
 4. Identifica tendências
@@ -2499,7 +1797,7 @@ Próxima execução: Hoje às 23:00
 > "Minha licença Veeam está próxima de vencer?"
 
 **Processo:**
-1. Claude chama `veeam_get_license_info`
+1. Claude chama `veeam_get_license_compliance`
 2. Obtém data de expiração
 3. Calcula dias restantes
 4. Alerta se <30 dias
