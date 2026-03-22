@@ -1,6 +1,6 @@
 {
   "name": "vbr-mcp-server",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
@@ -15,6 +15,9 @@
   "scripts": {
     "start": "node vbr-mcp-server.js",
     "start:http": "node vbr-mcp-server.js --http",
-    "start:mcp": "node vbr-mcp-server.js --mcp"
+    "start:mcp": "node vbr-mcp-server.js --mcp",
+    "test": "node --test tests/unit/formatters/*.test.js tests/integration/*.test.js",
+    "test:unit": "node --test tests/unit/formatters/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js"
   }
 }
