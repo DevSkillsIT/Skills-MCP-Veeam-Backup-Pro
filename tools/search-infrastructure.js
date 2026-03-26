@@ -18,7 +18,7 @@ export default function(server) {
     "veeam_search_infrastructure",
     {
       type: z.enum(["proxies", "repositories"]).describe("Infrastructure type to search"),
-      limit: z.number().min(1).max(50).default(25).describe("Maximum items to retrieve (default: 25, max: 50)"),
+      limit: z.number().min(1).max(50).default(25).describe("Maximum items to retrieve (default: 25)"),
       skip: z.number().min(0).default(0).describe("Number of items to skip for pagination"),
       threshold: z.number().min(1).max(99).default(20).optional().describe("Warning threshold % for free space (repositories only, default: 20)")
     },

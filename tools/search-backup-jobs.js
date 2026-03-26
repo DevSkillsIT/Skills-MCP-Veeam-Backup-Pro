@@ -21,7 +21,7 @@ export default function(server) {
   server.tool(
     "veeam_search_backup_jobs",
     {
-      limit: z.number().min(1).max(50).default(25).describe("Maximum number of jobs to retrieve (default: 25, max: 50)"),
+      limit: z.number().min(1).max(50).default(25).describe("Maximum number of jobs to retrieve (default: 25)"),
       skip: z.number().min(0).default(0).describe("Number of jobs to skip for pagination"),
       typeFilter: z.enum(["Backup", "Replica", "BackupCopy", "BackupSync", "All"]).default("Backup").describe("Job type filter. Use 'BackupCopy' for copy jobs (3-2-1 rule), 'All' for everything"),
       stateFilter: z.enum(["Started", "Stopped", "Paused", "Working"]).optional().describe("Filter by job state"),

@@ -28,7 +28,7 @@ export default function(server) {
   server.tool(
     "veeam_search_backup_sessions",
     {
-      limit: z.number().min(1).max(50).default(25).describe("Maximum sessions to retrieve (default: 25, max: 50)"),
+      limit: z.number().min(1).max(50).default(25).describe("Maximum sessions to retrieve (default: 25)"),
       skip: z.number().min(0).default(0).describe("Number of sessions to skip for pagination"),
       scope: z.enum(["all", "backup_only"]).default("all").describe("'all' includes system tasks; 'backup_only' excludes MalwareDetection, SureBackup, etc."),
       statusFilter: z.enum(["All", "Running", "Failed", "Success", "Warning"]).default("All").describe("Filter by session status"),

@@ -22,7 +22,7 @@ export default function(server) {
     {
       vmName: z.string().optional().describe("VM name with semantic search (partial, accent-insensitive). Use vmName OR vmId"),
       vmId: z.string().optional().describe("VM UUID. Use vmName OR vmId"),
-      limit: z.number().min(1).max(50).default(25).describe("Maximum restore points to retrieve (default: 25, max: 50)")
+      limit: z.number().min(1).max(50).default(25).describe("Maximum restore points to retrieve (default: 25)")
     },
     async (params) => {
       const startTime = Date.now();
