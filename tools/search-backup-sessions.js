@@ -28,13 +28,13 @@ export default function(server) {
   server.tool(
     "veeam_search_backup_sessions",
     {
-      limit: z.number().min(1).max(50).default(25).describe("Maximum sessions to retrieve (default: 25)"),
-      skip: z.number().min(0).default(0).describe("Number of sessions to skip for pagination"),
-      scope: z.enum(["all", "backup_only"]).default("all").describe("'all' includes system tasks; 'backup_only' excludes MalwareDetection, SureBackup, etc."),
-      statusFilter: z.enum(["All", "Running", "Failed", "Success", "Warning"]).default("All").describe("Filter by session status"),
-      hours: z.number().min(1).max(168).optional().describe("Time window in hours (max 168 = 7 days). Filters sessions from last N hours"),
-      jobIdFilter: z.string().optional().describe("Filter sessions by specific job UUID"),
-      typeFilter: z.string().optional().describe("Session type filter (e.g., BackupJob, ReplicaJob, BackupCopyJob)")
+      limit: z.number().min(1).max(50).default(25).describe("Max sessions to return (default 25, hard max 50). This VBR accumulates 10,000+ sessions over time — never request max without a narrow hours/statusFilter, or the result is just the newest page and buries signal. Troubleshoot one job: jobIdFilter + limit=10. Failure sweep: statusFilter='Failed' + hours=24. Dashboard: limit=25, hours=24."),
+      skip: z.number().min(0).default(0).describe("Pagination offset (default 0 = newest). Increase by 'limit' to fetch older pages. Usually not needed — sessions are returned newest-first so skip=0 already has what you want."),
+      scope: z.enum(["all", "backup_only"]).default("all").describe("'all' includes system tasks (MalwareDetection, SureBackup, ConfigBackup, ...); 'backup_only' excludes them. Use 'backup_only' for customer-facing reports, 'all' for internal audit."),
+      statusFilter: z.enum(["All", "Running", "Failed", "Success", "Warning"]).default("All").describe("Filter by result. 'Running' shows in-progress only (good for 'what's happening now'). 'Failed' or 'Warning' for triage. 'Success' for SLA proof. 'All' when the user needs the raw picture."),
+      hours: z.number().min(1).max(168).optional().describe("Time window in hours (max 168 = 7 days). Always set this unless you genuinely need ancient history — without it, the tool scans ALL sessions. Typical values: hours=24 (daily check), hours=168 (weekly report), hours=4 (recent failures)."),
+      jobIdFilter: z.string().optional().describe("UUID of a specific backup job to filter by. Get it from search_backup_jobs first. Combine with limit=10 to see just the recent runs of one job — most efficient query shape."),
+      typeFilter: z.string().optional().describe("Session type (case-sensitive): 'BackupJob' (standard backups), 'ReplicaJob' (replicas), 'BackupCopyJob' (3-2-1 copy), 'ConfigurationBackup', 'MalwareDetection', 'SureBackup'. Leave empty to include all types.")
     },
     async (params) => {
       const startTime = Date.now();

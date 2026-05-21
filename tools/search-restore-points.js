@@ -22,7 +22,7 @@ export default function(server) {
     {
       vmName: z.string().optional().describe("VM name with semantic search (partial, accent-insensitive). Use vmName OR vmId"),
       vmId: z.string().optional().describe("VM UUID. Use vmName OR vmId"),
-      limit: z.number().min(1).max(50).default(25).describe("Maximum restore points to retrieve (default: 25)")
+      limit: z.number().min(1).max(50).default(25).describe("Max restore points to return (default 25, hard max 50). Points are returned newest-first, so limit=10 covers ~3 days of 4h-interval backups. Use limit=25 for weekly RPO audit, limit=50 only for deep retention review. Avoid max by default — it forces the API to scan the whole backup chain.")
     },
     async (params) => {
       const startTime = Date.now();
@@ -46,15 +46,17 @@ export default function(server) {
           finalVmId = await findVmIdByName(vmName, host, port, token, apiVersion);
         }
 
-        console.log(`[veeam_search_restore_points] Fetching restore points for VM ID: ${finalVmId}`);
+        console.log(`[veeam_search_restore_points] Fetching restore points for backupObjectId: ${finalVmId}`);
 
+        // @MX:NOTE: Path-based endpoint /api/v1/backupObjects/{id}/restorePoints is the
+        // canonical route in VBR REST API v1.2-rev0. The old query-style endpoint
+        // /api/v1/vmRestorePoints?vmIdFilter= returns HTTP 404 on 12.3.x — not available.
         const queryParams = new URLSearchParams({
           limit: limit.toString(),
-          skip: '0',
-          vmIdFilter: finalVmId
+          skip: '0'
         });
 
-        const apiUrl = `https://${host}:${port}/api/v1/vmRestorePoints?${queryParams.toString()}`;
+        const apiUrl = `https://${host}:${port}/api/v1/backupObjects/${encodeURIComponent(finalVmId)}/restorePoints?${queryParams.toString()}`;
         console.log(`[veeam_search_restore_points] GET ${apiUrl}`);
 
         const response = await fetch(apiUrl, {
@@ -184,28 +186,75 @@ export default function(server) {
 // Helper functions
 // ============================================================================
 
+// @MX:NOTE: VM lookup uses a two-path fallback strategy.
+// Primary path:  GET /api/v1/backupObjects?nameFilter=<name>  (canonical in VBR REST v1.2-rev0)
+// Fallback path: GET /api/v1/vmRestorePoints?limit=1000       (original approach, kept for older builds)
+// The fallback is triggered only when the primary endpoint returns HTTP 404.
 async function findVmIdByName(vmName, host, port, token, apiVersion) {
   console.log(`[findVmIdByName] Searching VM: "${vmName}"`);
 
-  const queryParams = new URLSearchParams({ limit: '1000', skip: '0' });
-  const apiUrl = `https://${host}:${port}/api/v1/vmRestorePoints?${queryParams.toString()}`;
+  const headers = {
+    'accept': 'application/json',
+    'x-api-version': apiVersion,
+    'Authorization': `Bearer ${token}`
+  };
 
-  const response = await fetch(apiUrl, {
-    method: 'GET',
-    headers: {
-      'accept': 'application/json',
-      'x-api-version': apiVersion,
-      'Authorization': `Bearer ${token}`
-    },
-    agent: httpsAgent
-  });
+  // ── Primary path: /api/v1/backupObjects (VBR REST API v1.2-rev0) ──────────
+  const backupObjectsUrl = `https://${host}:${port}/api/v1/backupObjects?nameFilter=${encodeURIComponent(vmName)}&limit=50&skip=0`;
+  console.log(`[findVmIdByName] Trying primary path: ${backupObjectsUrl}`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch VMs (HTTP ${response.status}): ${errorText}`);
+  const primaryResponse = await fetch(backupObjectsUrl, { method: 'GET', headers, agent: httpsAgent });
+
+  if (primaryResponse.ok) {
+    const objectsData = await primaryResponse.json();
+    const objects = objectsData.data || [];
+    console.log(`[findVmIdByName] backupObjects returned ${objects.length} result(s)`);
+
+    if (objects.length > 0) {
+      const matched = searchByName(objects, vmName, 'name');
+      if (matched.length > 0) {
+        const found = matched[0];
+        // @MX:NOTE: backupObjects exposes two IDs:
+        //   - "id"       = Veeam UUID (accepted by /api/v1/backupObjects/{id}/restorePoints)
+        //   - "objectId" = vSphere managed object reference (e.g. "vm-154058"), NOT valid here.
+        // Always prefer "id"; fall back to "objectId" only if the UUID is missing.
+        const resolvedId = found.id ?? found.objectId;
+        console.log(`[findVmIdByName] [primary] Found: "${found.name}" (backupObjectId: ${resolvedId})`);
+        return resolvedId;
+      }
+    }
+
+    // Primary endpoint reachable but no match found — give a clear error
+    const suggestions = objects.slice(0, 10).map(o => o.name).join(', ');
+    throw new Error(
+      `No VM found matching "${vmName}" in backupObjects.\n` +
+      (suggestions ? `First results: ${suggestions}\n` : '') +
+      `Tips: search is accent-insensitive and case-insensitive.`
+    );
   }
 
-  const allPoints = await response.json();
+  if (primaryResponse.status !== 404) {
+    // Non-404 error on primary path — surface it directly
+    const errorText = await primaryResponse.text();
+    throw new Error(`Failed to look up VM via backupObjects (HTTP ${primaryResponse.status}): ${errorText}`);
+  }
+
+  // ── Fallback path: /api/v1/vmRestorePoints (original approach) ────────────
+  console.log(`[findVmIdByName] Primary path returned 404; falling back to /api/v1/vmRestorePoints`);
+
+  const fallbackUrl = `https://${host}:${port}/api/v1/vmRestorePoints?limit=1000&skip=0`;
+  const fallbackResponse = await fetch(fallbackUrl, { method: 'GET', headers, agent: httpsAgent });
+
+  if (!fallbackResponse.ok) {
+    const errorText = await fallbackResponse.text();
+    throw new Error(
+      `Both VM lookup paths failed.\n` +
+      `backupObjects: HTTP 404 (endpoint not available on this server)\n` +
+      `vmRestorePoints: HTTP ${fallbackResponse.status} — ${errorText}`
+    );
+  }
+
+  const allPoints = await fallbackResponse.json();
 
   if (!allPoints.data || allPoints.data.length === 0) {
     throw new Error("No restore points found on this server. No VMs have backups.");
@@ -236,7 +285,7 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
   }
 
   const foundVM = matchedVMs[0];
-  console.log(`[findVmIdByName] Found VM: "${foundVM.vmName}" (ID: ${foundVM.vmId})`);
+  console.log(`[findVmIdByName] [fallback] Found VM: "${foundVM.vmName}" (ID: ${foundVM.vmId})`);
   return foundVM.vmId;
 }
 

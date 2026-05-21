@@ -18,7 +18,7 @@ export default function(server) {
     "veeam_search_infrastructure",
     {
       type: z.enum(["proxies", "repositories"]).describe("Infrastructure type to search"),
-      limit: z.number().min(1).max(50).default(25).describe("Maximum items to retrieve (default: 25)"),
+      limit: z.number().min(1).max(50).default(25).describe("Max items to return (default 25, hard max 50). Proxies and repositories are usually <30 total per VBR — default 25 captures almost all environments. Only raise if the target is a large MSP with dozens of repos."),
       skip: z.number().min(0).default(0).describe("Number of items to skip for pagination"),
       threshold: z.number().min(1).max(99).default(20).optional().describe("Warning threshold % for free space (repositories only, default: 20)")
     },
@@ -53,27 +53,60 @@ export default function(server) {
 // TYPE: proxies
 // ============================================================================
 async function handleProxies(host, port, token, apiVersion, limit, skip) {
-  const apiUrl = `https://${host}:${port}/api/v1/backupInfrastructure/proxies?limit=${limit}&skip=${skip}`;
-  console.log(`[search_infrastructure:proxies] GET ${apiUrl}`);
+  // @MX:NOTE: /api/v1/backupInfrastructure/proxies returns only static config (no hostName).
+  // /api/v1/backupInfrastructure/proxies/states returns the same list enriched with
+  // hostName, isOnline, isDisabled, isOutOfDate — the fields users actually want to see.
+  // We fetch /states primarily and fall back to /proxies if /states is unavailable.
+  const statesUrl = `https://${host}:${port}/api/v1/backupInfrastructure/proxies/states?limit=${limit}&skip=${skip}`;
+  const baseUrl = `https://${host}:${port}/api/v1/backupInfrastructure/proxies?limit=${limit}&skip=${skip}`;
+  const headers = {
+    'accept': 'application/json',
+    'x-api-version': apiVersion,
+    'Authorization': `Bearer ${token}`
+  };
 
-  const response = await fetch(apiUrl, {
-    method: 'GET',
-    headers: {
-      'accept': 'application/json',
-      'x-api-version': apiVersion,
-      'Authorization': `Bearer ${token}`
-    },
-    agent: httpsAgent
-  });
+  console.log(`[search_infrastructure:proxies] GET ${statesUrl}`);
+  let response = await fetch(statesUrl, { method: 'GET', headers, agent: httpsAgent });
+  let usedFallback = false;
+
+  // @MX:NOTE: /proxies/states may not be available on every VBR version.
+  // Observed HTTP 400 on VBR 12.3.2 / REST v1.2-rev0. Fall back to the plain
+  // /proxies endpoint on any 4xx so the tool always returns usable data.
+  if (!response.ok && response.status >= 400 && response.status < 500) {
+    const errText = await response.text().catch(() => '');
+    console.log(`[search_infrastructure:proxies] /states returned HTTP ${response.status} (${errText.slice(0,120)}); falling back to /proxies`);
+    response = await fetch(baseUrl, { method: 'GET', headers, agent: httpsAgent });
+    usedFallback = true;
+  }
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch proxies: ${response.statusText}`);
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Failed to fetch proxies: HTTP ${response.status} ${response.statusText} — ${errText.slice(0,200)}`);
   }
 
   const proxiesData = await response.json();
 
   const total = proxiesData.pagination?.total || 0;
   const count = proxiesData.pagination?.count || proxiesData.data?.length || 0;
+
+  // @MX:NOTE: When /states fell back to /proxies, the response has server.hostId (UUID)
+  // but no hostName. Build a hostId→hostName map from /managedServers to display a
+  // human name. Single round-trip, cached by VBR for subsequent proxies in the batch.
+  let hostNameMap = {};
+  if (usedFallback && (proxiesData.data || []).some(p => p.server?.hostId)) {
+    try {
+      const msUrl = `https://${host}:${port}/api/v1/backupInfrastructure/managedServers?limit=500`;
+      const msResp = await fetch(msUrl, { method: 'GET', headers, agent: httpsAgent });
+      if (msResp.ok) {
+        const msData = await msResp.json();
+        for (const srv of msData.data || []) {
+          if (srv.id) hostNameMap[srv.id] = srv.name;
+        }
+      }
+    } catch (err) {
+      console.warn(`[search_infrastructure:proxies] managedServers lookup failed: ${err.message}`);
+    }
+  }
 
   const formattedResult = {
     summary: `Retrieved ${count} backup proxies out of ${total} total`,
@@ -82,13 +115,20 @@ async function handleProxies(host, port, token, apiVersion, limit, skip) {
       name: proxy.name,
       description: proxy.description,
       type: proxy.type,
-      transportMode: proxy.server?.transportMode,
-      maxTaskCount: proxy.server?.maxTaskCount,
-      failoverToNetwork: proxy.server?.failoverToNetwork,
-      hostToProxyEncryption: proxy.server?.hostToProxyEncryption,
-      autoSelectDatastores: proxy.server?.connectedDatastores?.autoSelectEnabled
+      // /states provides these at the top level; /proxies has only server.hostId (UUID).
+      hostName: proxy.hostName ?? proxy.server?.hostName ?? hostNameMap[proxy.server?.hostId] ?? null,
+      hostId: proxy.hostId ?? proxy.server?.hostId ?? null,
+      isOnline: proxy.isOnline ?? null,
+      isDisabled: proxy.isDisabled ?? null,
+      isOutOfDate: proxy.isOutOfDate ?? null,
+      transportMode: proxy.server?.transportMode ?? null,
+      maxTaskCount: proxy.server?.maxTaskCount ?? null,
+      failoverToNetwork: proxy.server?.failoverToNetwork ?? null,
+      hostToProxyEncryption: proxy.server?.hostToProxyEncryption ?? null,
+      autoSelectDatastores: proxy.server?.connectedDatastores?.autoSelectEnabled ?? null
     })),
-    pagination: proxiesData.pagination
+    pagination: proxiesData.pagination,
+    _source: usedFallback ? 'proxies' : 'proxies/states'
   };
 
   return {

@@ -7,6 +7,7 @@
 import fetch from "node-fetch";
 import https from "https";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { formatLicenseInfo } from "../lib/formatters/veeam-formatters.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -39,40 +40,33 @@ export default function(server) {
 
         const licenseData = await response.json();
 
-        // Extract workloads
-        const workloads = licenseData.instanceLicenseSummary?.workload || [];
-
-        // Group workloads by type
-        const workloadsByType = {};
-        workloads.forEach(workload => {
-          if (!workloadsByType[workload.type]) {
-            workloadsByType[workload.type] = [];
+        // Fetch workloads from dedicated endpoint (mirrors resources.js pattern)
+        try {
+          const wlRes = await fetch(`https://${host}:${port}/api/v1/license/workloads`, {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'x-api-version': apiVersion,
+              'Authorization': `Bearer ${token}`
+            },
+            agent: httpsAgent
+          });
+          if (wlRes.ok) {
+            const wlData = await wlRes.json();
+            licenseData.workloads = wlData?.data || wlData;
           }
-          workloadsByType[workload.type].push(workload);
-        });
+        } catch {
+          // workloads are optional — continue without them
+        }
 
-        // Combined response: license info + workloads
-        const formattedResult = {
-          license: {
-            status: licenseData.status,
-            edition: licenseData.edition,
-            expirationDate: licenseData.expirationDate,
-            licensedTo: licenseData.licensedTo,
-            supportExpirationDate: licenseData.supportExpirationDate,
-            instanceLicenseSummary: {
-              package: licenseData.instanceLicenseSummary?.package,
-              licensedInstancesNumber: licenseData.instanceLicenseSummary?.licensedInstancesNumber,
-              usedInstancesNumber: licenseData.instanceLicenseSummary?.usedInstancesNumber,
-              workloadCount: workloads.length
-            }
-          },
-          workloads: workloadsByType
-        };
+        // Return Markdown directly so response-formatter interceptor passes it through
+        // (interceptor returns strings as-is at line 98 of response-formatter.js)
+        const markdown = formatLicenseInfo(licenseData);
 
         return {
           content: [{
             type: "text",
-            text: JSON.stringify(formattedResult, null, 2)
+            text: markdown
           }]
         };
 

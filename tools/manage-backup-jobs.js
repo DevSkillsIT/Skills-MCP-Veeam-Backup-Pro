@@ -27,8 +27,8 @@ export default function(server) {
       action: z.enum(["get_details", "get_schedule", "start", "stop"]).describe("Action to perform on the job"),
       jobId: z.string().describe("UUID of the backup job"),
       fullBackup: z.boolean().default(false).optional().describe("Force full backup instead of incremental (only for 'start' action)"),
-      includeSessions: z.boolean().default(true).optional().describe("Include recent sessions (only for 'get_details' action)"),
-      sessionLimit: z.number().min(1).max(100).default(10).optional().describe("Max recent sessions to include (only for 'get_details' action)"),
+      includeSessions: z.boolean().default(true).optional().describe("If true, fetches recent sessions for this job and renders them in the 'Sessões Recentes' table. Keep true for audit context; set false to skip the extra API round-trip when you only need static job config."),
+      sessionLimit: z.number().min(1).max(100).default(10).optional().describe("Max recent sessions to fetch when includeSessions=true. Default 10 is enough for most checks (spot last run, see recent failure). Use 25 for weekly audit; values above 25 are rarely useful — the Markdown caps render at 25 rows regardless. Do not default to max (100) unless explicitly asked for deep history."),
       confirmationToken: z.string().optional().describe("Confirmation token (required if MCP_SAFETY_GUARD=true, for 'start'/'stop')"),
       reason: z.string().optional().describe("Operation justification (required if MCP_SAFETY_GUARD=true, for 'start'/'stop')")
     },
@@ -146,24 +146,72 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
     }
   } else {
     jobData = await jobResponse.json();
+    console.log('[manage_backup_jobs:get_details] raw payload keys:', Object.keys(jobData || {}));
+
+    // Unwrap paginated shape { data: { id, name, ... } } if present
+    if (jobData && jobData.data && !jobData.id) {
+      jobData = jobData.data;
+    }
+
+    // @MX:NOTE: /api/v1/jobs/{id} returns static configuration only (no runtime state).
+    // /api/v1/jobs/states carries status, lastResult, lastRun, nextRun, workload, sessionId.
+    // We enrich jobData with those fields so the detail view is complete. Errors here are
+    // non-fatal — the main config is already loaded.
+    try {
+      const stateUrl = `https://${host}:${port}/api/v1/jobs/states?idFilter=${encodeURIComponent(jobId)}&limit=1`;
+      const stateResp = await fetch(stateUrl, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'x-api-version': apiVersion,
+          'Authorization': `Bearer ${token}`
+        },
+        agent: httpsAgent
+      });
+      if (stateResp.ok) {
+        const stateData = await stateResp.json();
+        const s = stateData?.data?.[0];
+        if (s) {
+          jobData.state = s.status ?? jobData.state ?? null;
+          jobData.lastRun = s.lastRun ?? jobData.lastRun ?? null;
+          jobData.nextRun = s.nextRun ?? jobData.nextRun ?? null;
+          jobData.platformName = s.workload ?? jobData.platformName ?? null;
+          if (!jobData.result && s.lastResult) {
+            jobData.result = { result: s.lastResult, message: null };
+          }
+          jobData.repositoryId = s.repositoryId ?? null;
+          jobData.repositoryName = s.repositoryName ?? null;
+          jobData.progressPercent = s.progressPercent ?? null;
+          jobData.sessionId = s.sessionId ?? null;
+        }
+      } else {
+        console.warn(`[manage_backup_jobs:get_details] state enrichment returned HTTP ${stateResp.status}`);
+      }
+    } catch (enrichErr) {
+      console.warn('[manage_backup_jobs:get_details] state enrichment failed:', enrichErr.message);
+    }
   }
 
   let result = {
     job: {
-      id: jobData.id,
-      name: jobData.name,
-      type: jobData.type,
-      state: jobData.state,
-      platformName: jobData.platformName,
-      description: jobData.description,
-      scheduleEnabled: jobData.scheduleEnabled,
-      scheduleType: jobData.scheduleType,
-      lastRun: jobData.lastRun,
-      nextRun: jobData.nextRun,
-      retryCount: jobData.retryCount,
-      retryWait: jobData.retryWait,
-      result: jobData.result?.result || 'Unknown',
-      message: jobData.result?.message || 'No message'
+      id: jobData.id ?? null,
+      name: jobData.name ?? jobData.displayName ?? null,
+      type: jobData.type ?? null,
+      state: jobData.state ?? null,
+      platformName: jobData.platformName ?? null,
+      description: jobData.description ?? null,
+      scheduleEnabled: jobData.scheduleEnabled ?? (jobData.isDisabled === false) ?? null,
+      scheduleType: jobData.scheduleType ?? jobData.schedule?.type ?? null,
+      lastRun: jobData.lastRun ?? null,
+      nextRun: jobData.nextRun ?? null,
+      retryCount: jobData.retryCount ?? jobData.schedule?.retry?.retryTimes ?? null,
+      retryWait: jobData.retryWait ?? jobData.schedule?.retry?.retryTimeout ?? null,
+      result: jobData.result?.result ?? null,
+      message: jobData.result?.message ?? null,
+      sessionId: jobData.sessionId ?? null,
+      progressPercent: jobData.progressPercent ?? null,
+      repositoryId: jobData.repositoryId ?? null,
+      repositoryName: jobData.repositoryName ?? null
     }
   };
 
