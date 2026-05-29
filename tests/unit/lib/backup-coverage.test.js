@@ -2,7 +2,7 @@
 // Unit tests for the pure restore-point span logic (oldest/newest/approx detection).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeRestorePointSpan, selectVmMatch } from '../../../lib/backup-coverage.js';
+import { computeRestorePointSpan, selectVmMatch, classifyBackupKind } from '../../../lib/backup-coverage.js';
 
 describe('computeRestorePointSpan()', () => {
   it('retorna null para lista vazia ou nula', () => {
@@ -81,5 +81,20 @@ describe('selectVmMatch() — V1 multi-VM disambiguation', () => {
     const fb = selectVmMatch([{ vmName: 'GEPMWVM010', vmId: 'g10' }]);
     assert.equal(fb.id, 'g10');
     assert.equal(fb.name, 'GEPMWVM010');
+  });
+});
+
+describe('classifyBackupKind() — RC4 Agent/Copy detection', () => {
+  it('REPRO RC4: Agent de servidor fisico (WindowsPhysical)', () => {
+    assert.equal(classifyBackupKind('BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO - 203.0.113.237', 'WindowsPhysical'), 'Agent (servidor fisico)');
+    assert.equal(classifyBackupKind('algum-job', 'LinuxPhysical'), 'Agent (servidor fisico)');
+  });
+  it('Backup Copy detectado pelo nome (offsite)', () => {
+    assert.equal(classifyBackupKind('BKP-COPY-DTC-CD-PMW-CDL-SR001-FISICO', 'CustomPlatform'), 'Backup Copy (offsite/cloud)');
+  });
+  it('VM e fallback', () => {
+    assert.equal(classifyBackupKind('JOB-VM', 'VmwareVm'), 'VM');
+    assert.equal(classifyBackupKind('algo', 'CustomPlatform'), 'Externo/Copy');
+    assert.equal(classifyBackupKind('algo', null), 'Backup armazenado');
   });
 });

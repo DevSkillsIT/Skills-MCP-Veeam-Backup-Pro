@@ -333,6 +333,18 @@ describe('formatBackupJobsList() — VM match e derivacao', () => {
     assert.ok(result.includes('99'));
   });
 
+  it('REPRO RC4: matchedFromBackups renderiza Agent/Copy via /backups', () => {
+    const data = { matchedFromBackups: true, searchTerm: 'CDL', jobs: [
+      { name: 'BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO - 203.0.113.237', kind: 'Agent (servidor fisico)', repositoryName: 'CDL-CLI_RepoLocal-CDL-BKP-HDExterno', creationTime: '2026-03-30T19:25:50Z' },
+      { name: 'BKP-COPY-DTC-CD-PMW-CDL-SR001-FISICO', kind: 'Backup Copy (offsite/cloud)', repositoryName: null, repositoryId: '3429c8d0', creationTime: '2026-03-30T21:04:58Z' }
+    ] };
+    const result = formatBackupJobsList(data, {});
+    assert.ok(result.includes('BACKUPS ARMAZENADOS'), result);
+    assert.ok(result.includes('Agent (servidor fisico)'));
+    assert.ok(result.includes('Backup Copy (offsite/cloud)'));
+    assert.ok(result.includes('CDL-CLI_RepoLocal-CDL-BKP-HDExterno'));
+  });
+
   it('lista normal inclui coluna VMs (objectsCount)', () => {
     const data = { data: [{ id: 'j1', name: 'JOB-X', type: 'Backup', state: 0, result: { result: 1 }, objectsCount: 3, lastRun: '2026-05-29T01:00:00Z' }] };
     const result = formatBackupJobsList(data, {});

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
 import { createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
-import { findJobsByVmName } from "../lib/backup-coverage.js";
+import { findJobsByVmName, findJobsFromBackups } from "../lib/backup-coverage.js";
 import { vbrFetch } from "../lib/veeam-fetch.js";
 import { groupSessionsByJob, SESSION_SCAN } from "../lib/session-aggregation.js";
 
@@ -143,26 +143,48 @@ export default function(server) {
           }
         }
 
-        // No results
+        // @MX:NOTE: RC4 — 4th and LAST coverage source: stored backups (/api/v1/backups).
+        // Veeam Agent (physical server) and Backup Copy jobs are absent from /jobs AND their
+        // sessions are not name-matchable in /sessions, so the 3 sources above all miss them.
+        // /backups is the only place they surface (resolved the invisible CDL agent job).
+        if ((!filteredJobs || filteredJobs.length === 0) && nameFilter) {
+          const term = nameFilter.replace(/\*/g, '');
+          const fromBackups = await findJobsFromBackups({ host, port, token, apiVersion }, term);
+          if (fromBackups.length) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ matchedFromBackups: true, searchTerm: term, jobs: fromBackups }, null, 2)
+              }]
+            };
+          }
+        }
+
+        // No results — after checking ALL 4 sources (inventory, VM name, sessions, backups).
         if (!filteredJobs || filteredJobs.length === 0) {
+          const searched = nameFilter ? nameFilter.replace(/\*/g, '') : null;
           const noResultsResponse = {
             summary: {
-              message: `No backup jobs found with typeFilter: ${typeFilter}`,
+              message: searched
+                ? `Nenhum job de backup casa "${searched}" — busca esgotou as 4 fontes: inventario /jobs, nome de VM, historico de sessoes (7d) e backups armazenados (Agent/Copy/offsite).`
+                : `Nenhum backup job encontrado (typeFilter: ${typeFilter}).`,
               count: 0,
               timestamp: new Date().toISOString()
             },
             info: {
+              conclusion: searched
+                ? `Nao ha job (de nenhum tipo) cujo nome case "${searched}". Verifique se ha um REPOSITORIO provisionado para esse cliente com veeam_search_infrastructure(type=repositories) — pode haver storage sem job ativo (orfao).`
+                : undefined,
               possibleReasons: [
-                "No jobs configured on this VBR server",
-                `TypeFilter '${typeFilter}' is too restrictive`,
-                "Insufficient permissions",
-                "VBR server is new with no jobs yet"
+                "Nenhum job casa o termo em nenhuma das 4 fontes",
+                `typeFilter '${typeFilter}' pode estar restritivo (use 'All')`,
+                "Permissoes insuficientes",
+                "O termo nao corresponde a nenhum job/VM/backup"
               ],
               suggestions: [
-                "Try typeFilter='All' to see every job returned by the endpoint",
-                "Wrap partial names with * (e.g. nameFilter='*prod*')",
-                "Check VBR console for configured jobs",
-                "Verify user permissions"
+                "Use typeFilter='All' para nao filtrar por tipo",
+                "Verifique repositorios: veeam_search_infrastructure(type='repositories')",
+                "Confira o nome exato no console do VBR"
               ],
               availableTypes: ["Backup", "All"]
             }
