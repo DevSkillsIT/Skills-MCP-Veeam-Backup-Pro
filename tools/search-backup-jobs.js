@@ -10,7 +10,7 @@ import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
 import { createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
-import { findJobsByVmName, findJobsFromBackups } from "../lib/backup-coverage.js";
+import { findJobsByVmName, findJobsFromBackups, listExternalJobsFromBackups } from "../lib/backup-coverage.js";
 import { vbrFetch } from "../lib/veeam-fetch.js";
 import { groupSessionsByJob, SESSION_SCAN } from "../lib/session-aggregation.js";
 
@@ -193,6 +193,19 @@ export default function(server) {
           return createMCPResponse(addPerformanceMetrics(noResultsResponse, startTime));
         }
 
+        // @MX:NOTE: RC4b — overview listing (no name/desc/state filter, first page) ALSO surfaces
+        // Agent (physical) and Backup Copy jobs from /backups, which are NOT in /jobs inventory.
+        // Without this, "liste os jobs" returns only the 21 VM jobs and an LLM concludes a client
+        // (e.g. CDL) has no job. Best-effort: never blocks the main listing.
+        let externalJobs = [];
+        if (!nameFilter && !descriptionFilter && !stateFilter && (skip === 0)) {
+          try {
+            externalJobs = await listExternalJobsFromBackups({ host, port, token, apiVersion });
+          } catch (e) {
+            console.warn('[veeam_search_backup_jobs] external jobs (/backups) lookup failed:', e.message);
+          }
+        }
+
         // Format results
         const total = jobsData.pagination?.total || filteredJobs.length;
         const count = filteredJobs.length;
@@ -225,6 +238,7 @@ export default function(server) {
             repositoryName: job.repositoryName ?? null
           })),
           pagination: jobsData.pagination || { total, count },
+          externalJobs,
           filters: {
             typeFilter,
             stateFilter: stateFilter || 'None',
