@@ -265,12 +265,16 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
       }
     }
 
-    // Primary endpoint reachable but no match found — give a clear error
+    // @MX:NOTE: RC3 — endpoint reachable but no object matches. Frame as an informative
+    // FINDING (the target simply has no restore points indexed), not a bare failure, and
+    // point to the next step — Agent/physical backups may not appear as backupObjects.
     const suggestions = objects.slice(0, 10).map(o => o.name).join(', ');
     throw new Error(
-      `No VM found matching "${vmName}" in backupObjects.\n` +
-      (suggestions ? `First results: ${suggestions}\n` : '') +
-      `Tips: search is accent-insensitive and case-insensitive.`
+      `Nenhuma VM/objeto de backup casa "${vmName}" — esse alvo nao tem pontos de restauracao indexados.\n` +
+      `Pode nao estar em nenhum job de backup de VM, OU ser um backup de Agent/servidor fisico (que nao aparece como backupObject).\n` +
+      `Proximo passo: veeam_search_backup_jobs(nameFilter="${vmName}") localiza jobs de VM, Agent e Copy.\n` +
+      (suggestions ? `Objetos parecidos: ${suggestions}\n` : '') +
+      `Busca e parcial, sem acento e sem distinguir maiusculas.`
     );
   }
 
@@ -319,9 +323,10 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
   if (matchedVMs.length === 0) {
     const availableVMs = uniqueVMs.slice(0, 10).map(vm => vm.vmName).join(', ');
     throw new Error(
-      `No VM found matching "${vmName}".\n` +
-      `Available VMs (first 10): ${availableVMs}\n` +
-      `Tips: search is accent-insensitive and case-insensitive.`
+      `Nenhuma VM casa "${vmName}" — esse alvo nao tem pontos de restauracao indexados.\n` +
+      `Proximo passo: veeam_search_backup_jobs(nameFilter="${vmName}") localiza jobs de VM, Agent e Copy.\n` +
+      `VMs disponiveis (primeiras 10): ${availableVMs}\n` +
+      `Busca e parcial, sem acento e sem distinguir maiusculas.`
     );
   }
 
