@@ -104,11 +104,11 @@ describe('checkResponseSize()', () => {
     assert.ok(result.size > 0);
   });
 
-  it('retorna exceeded=true para texto > 400KB', () => {
+  it('retorna exceeded=true para texto > 50KB', () => {
     const bigText = 'X'.repeat(500 * 1024);
     const result = checkResponseSize(bigText);
     assert.equal(result.exceeded, true);
-    assert.ok(result.message.includes('400KB'));
+    assert.ok(result.message.includes('50KB'));
   });
 
   it('aceita limite customizado', () => {

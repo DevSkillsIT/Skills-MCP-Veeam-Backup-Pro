@@ -16,7 +16,7 @@ describe('formatToolResponse() — interceptor centralizado', () => {
       pagination: { total: 1 }
     };
     const result = formatToolResponse('veeam_search_backup_jobs', data, { limit: 25 });
-    assert.ok(result.includes('| ID |'), 'deve conter header de tabela Markdown');
+    assert.ok(result.includes('| Nome |'), 'deve conter header de tabela Markdown');
     assert.ok(result.includes('Backup-Prod'), 'deve conter nome do job');
     assert.ok(!result.includes('"id":'), 'NAO deve conter JSON bruto');
   });
@@ -73,7 +73,7 @@ describe('formatToolResponse() — interceptor centralizado', () => {
     const data = { data: [{ id: 'r1', name: 'Repo', type: 'Local', capacityGB: 500, freeGB: 200 }] };
     const result = formatToolResponse('veeam_search_infrastructure', data, { type: 'repositories' });
     assert.ok(result.includes('Repo'));
-    assert.ok(result.includes('repositorios'));
+    assert.ok(result.includes('repositorio'));
   });
 
   it('infrastructure router: proxies (default)', () => {
@@ -83,9 +83,9 @@ describe('formatToolResponse() — interceptor centralizado', () => {
     assert.ok(result.includes('proxies'));
   });
 
-  it('resposta grande excede limite de 400KB', () => {
+  it('resposta grande excede limite de tamanho', () => {
     const bigData = { data: Array.from({ length: 10000 }, (_, i) => ({ id: 'x'.repeat(100), name: `Job-${i}`, type: 'Backup', state: 0, result: { result: 1 }, lastRun: '2026-01-01' })) };
     const result = formatToolResponse('veeam_search_backup_jobs', bigData, {});
-    assert.ok(result.includes('400KB') || result.includes('| ID |'));
+    assert.ok(result.includes('KB') || result.includes('| Nome |'));
   });
 });

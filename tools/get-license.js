@@ -4,9 +4,9 @@
 //
 // Fetches license info AND workloads in a single API call, returns both in one response.
 
-import fetch from "node-fetch";
 import https from "https";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
 import { formatLicenseInfo } from "../lib/formatters/veeam-formatters.js";
 
 const httpsAgent = new https.Agent({
@@ -24,7 +24,7 @@ export default function(server) {
         const apiUrl = `https://${host}:${port}/api/v1/license`;
         console.log(`[veeam_get_license_compliance] GET ${apiUrl}`);
 
-        const response = await fetch(apiUrl, {
+        const response = await vbrFetch(apiUrl, {
           method: 'GET',
           headers: {
             'accept': 'application/json',
@@ -40,24 +40,9 @@ export default function(server) {
 
         const licenseData = await response.json();
 
-        // Fetch workloads from dedicated endpoint (mirrors resources.js pattern)
-        try {
-          const wlRes = await fetch(`https://${host}:${port}/api/v1/license/workloads`, {
-            method: 'GET',
-            headers: {
-              'accept': 'application/json',
-              'x-api-version': apiVersion,
-              'Authorization': `Bearer ${token}`
-            },
-            agent: httpsAgent
-          });
-          if (wlRes.ok) {
-            const wlData = await wlRes.json();
-            licenseData.workloads = wlData?.data || wlData;
-          }
-        } catch {
-          // workloads are optional — continue without them
-        }
+        // @MX:NOTE: /api/v1/license/workloads returns HTTP 404 on VBR 12.3.2 / v1.2-rev0.
+        // The workload/instance breakdown is already embedded in /license under
+        // instanceLicenseSummary (objects[], used/licensed counts) — no second call needed.
 
         // Return Markdown directly so response-formatter interceptor passes it through
         // (interceptor returns strings as-is at line 98 of response-formatter.js)
@@ -75,7 +60,7 @@ export default function(server) {
         return {
           content: [{
             type: "text",
-            text: `Error: ${error.message}`
+            text: `Erro: ${error.message}`
           }],
           isError: true
         };

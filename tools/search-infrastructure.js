@@ -4,10 +4,10 @@
 //
 // Unified infrastructure search with type parameter (proxies or repositories).
 
-import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -17,15 +17,15 @@ export default function(server) {
   server.tool(
     "veeam_search_infrastructure",
     {
-      type: z.enum(["proxies", "repositories"]).describe("Infrastructure type to search"),
-      limit: z.number().min(1).max(50).default(25).describe("Max items to return (default 25, hard max 50). Proxies and repositories are usually <30 total per VBR — default 25 captures almost all environments. Only raise if the target is a large MSP with dozens of repos."),
+      type: z.enum(["proxies", "repositories"]).describe("REQUIRED. Which infrastructure to list: 'repositories' (storage targets — capacity, free space, usage %) or 'proxies' (data movers — host, max concurrent tasks). You MUST pass this; there is no default. For 'is there space?' use 'repositories'; for 'why is backup slow/queued?' use 'proxies'."),
+      limit: z.number().min(1).max(50).default(35).describe("Max items to return (default 35, hard max 50). Proxies and repositories are usually <35 total per VBR — the default captures almost all environments. Only raise for a large MSP with dozens of repos."),
       skip: z.number().min(0).default(0).describe("Number of items to skip for pagination"),
       threshold: z.number().min(1).max(99).default(20).optional().describe("Warning threshold % for free space (repositories only, default: 20)")
     },
     async (params) => {
       try {
         const { host, port, token, apiVersion } = await ensureAuthenticated();
-        const { type, limit = 25, skip = 0, threshold = 20 } = params;
+        const { type, limit = 35, skip = 0, threshold = 20 } = params;
 
         switch (type) {
           case 'proxies':
@@ -33,15 +33,17 @@ export default function(server) {
           case 'repositories':
             return await handleRepositories(host, port, token, apiVersion, limit, skip, threshold);
           default:
+            // @MX:NOTE: instructive error (mirrors search_restore_points) so an LLM that
+            // forgot the required `type` can self-correct instead of looping on a dead-end message.
             return {
-              content: [{ type: "text", text: `Error: Unknown type "${type}". Valid: proxies, repositories` }],
+              content: [{ type: "text", text: `You must provide "type". Valid values: "repositories" or "proxies".\nExamples:\n  - type: "repositories"  (storage capacity, free space, usage %)\n  - type: "proxies"       (processing proxies, host, max tasks)` }],
               isError: true
             };
         }
       } catch (error) {
         console.error('[veeam_search_infrastructure] Error:', error);
         return {
-          content: [{ type: "text", text: `Error: ${error.message}` }],
+          content: [{ type: "text", text: `Erro: ${error.message}` }],
           isError: true
         };
       }
@@ -66,7 +68,7 @@ async function handleProxies(host, port, token, apiVersion, limit, skip) {
   };
 
   console.log(`[search_infrastructure:proxies] GET ${statesUrl}`);
-  let response = await fetch(statesUrl, { method: 'GET', headers, agent: httpsAgent });
+  let response = await vbrFetch(statesUrl, { method: 'GET', headers, agent: httpsAgent });
   let usedFallback = false;
 
   // @MX:NOTE: /proxies/states may not be available on every VBR version.
@@ -75,7 +77,7 @@ async function handleProxies(host, port, token, apiVersion, limit, skip) {
   if (!response.ok && response.status >= 400 && response.status < 500) {
     const errText = await response.text().catch(() => '');
     console.log(`[search_infrastructure:proxies] /states returned HTTP ${response.status} (${errText.slice(0,120)}); falling back to /proxies`);
-    response = await fetch(baseUrl, { method: 'GET', headers, agent: httpsAgent });
+    response = await vbrFetch(baseUrl, { method: 'GET', headers, agent: httpsAgent });
     usedFallback = true;
   }
 
@@ -96,7 +98,7 @@ async function handleProxies(host, port, token, apiVersion, limit, skip) {
   if (usedFallback && (proxiesData.data || []).some(p => p.server?.hostId)) {
     try {
       const msUrl = `https://${host}:${port}/api/v1/backupInfrastructure/managedServers?limit=500`;
-      const msResp = await fetch(msUrl, { method: 'GET', headers, agent: httpsAgent });
+      const msResp = await vbrFetch(msUrl, { method: 'GET', headers, agent: httpsAgent });
       if (msResp.ok) {
         const msData = await msResp.json();
         for (const srv of msData.data || []) {
@@ -146,7 +148,7 @@ async function handleRepositories(host, port, token, apiVersion, limit, skip, th
   const apiUrl = `https://${host}:${port}/api/v1/backupInfrastructure/repositories/states?limit=${limit}&skip=${skip}`;
   console.log(`[search_infrastructure:repositories] GET ${apiUrl}`);
 
-  const response = await fetch(apiUrl, {
+  const response = await vbrFetch(apiUrl, {
     method: 'GET',
     headers: {
       'accept': 'application/json',

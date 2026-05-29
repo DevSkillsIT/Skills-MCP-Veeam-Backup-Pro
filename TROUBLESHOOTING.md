@@ -194,7 +194,7 @@ Authentication successful. Connected to your-veeam-server.com:9419. Token receiv
 
 ### **2. Test Sessions**
 ```
-veeam_list_backup_sessions({
+veeam_search_backup_sessions({
   "limit": 10,
   "typeFilter": "BackupJob"
 })
@@ -212,7 +212,7 @@ Retrieved X backup job sessions out of Y total sessions
 
 ### **3. Test Without Filters**
 ```
-veeam_list_backup_sessions({
+veeam_search_backup_sessions({
   "limit": 5
 })
 ```

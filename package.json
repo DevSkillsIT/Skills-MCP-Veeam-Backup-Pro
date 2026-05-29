@@ -16,8 +16,8 @@
     "start": "node vbr-mcp-server.js",
     "start:http": "node vbr-mcp-server.js --http",
     "start:mcp": "node vbr-mcp-server.js --mcp",
-    "test": "node --test tests/unit/formatters/*.test.js tests/integration/*.test.js",
-    "test:unit": "node --test tests/unit/formatters/*.test.js",
+    "test": "node --test tests/unit/formatters/*.test.js tests/unit/lib/*.test.js tests/integration/*.test.js",
+    "test:unit": "node --test tests/unit/formatters/*.test.js tests/unit/lib/*.test.js",
     "test:integration": "node --test tests/integration/*.test.js"
   }
 }

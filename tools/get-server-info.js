@@ -6,9 +6,9 @@
 // Mirrors the structure of tools/get-license.js; the response interceptor
 // in vbr-mcp-server.js handles Markdown conversion.
 
-import fetch from "node-fetch";
 import https from "https";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -25,7 +25,7 @@ export default function(server) {
         const apiUrl = `https://${host}:${port}/api/v1/serverInfo`;
         console.log(`[veeam_get_server_info] GET ${apiUrl}`);
 
-        const response = await fetch(apiUrl, {
+        const response = await vbrFetch(apiUrl, {
           method: 'GET',
           headers: {
             'accept': 'application/json',
@@ -53,7 +53,7 @@ export default function(server) {
         return {
           content: [{
             type: "text",
-            text: `Error: ${error.message}`
+            text: `Erro: ${error.message}`
           }],
           isError: true
         };

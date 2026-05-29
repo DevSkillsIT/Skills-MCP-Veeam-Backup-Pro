@@ -4,13 +4,15 @@
 //
 // Renamed for consistency. Same parameters, same API logic.
 
-import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { vbrFetch, vbrTryGet } from "../lib/veeam-fetch.js";
+import { resolveTimeWindow } from "../lib/date-helper.js";
 import { formatDateTime, formatBytes } from "../lib/format-helpers.js";
 import { enrichListResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
 import { searchByName } from "../lib/description-helpers.js";
+import { selectVmMatch } from "../lib/backup-coverage.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -22,18 +24,24 @@ export default function(server) {
     {
       vmName: z.string().optional().describe("VM name with semantic search (partial, accent-insensitive). Use vmName OR vmId"),
       vmId: z.string().optional().describe("VM UUID. Use vmName OR vmId"),
-      limit: z.number().min(1).max(50).default(25).describe("Max restore points to return (default 25, hard max 50). Points are returned newest-first, so limit=10 covers ~3 days of 4h-interval backups. Use limit=25 for weekly RPO audit, limit=50 only for deep retention review. Avoid max by default — it forces the API to scan the whole backup chain.")
+      limit: z.number().min(1).max(50).default(35).describe("Max restore points LISTED (default 35, hard max 50) — enforced. Points are newest-first. The retention span (first/last) is always computed over ALL points regardless of this limit. Use from/to to scope by date."),
+      from: z.string().optional().describe("Filtra pontos a partir desta data/hora. Aceita QUALQUER formato: ISO (2026-05-20), BR (20/05/2026 05:00), ou natural ('ontem', 'ultimas 48 horas', '7 dias'). Opcional — sem from/to retorna os mais recentes ate o limite."),
+      to: z.string().optional().describe("Filtra pontos ate esta data/hora (mesmos formatos de from). Opcional — padrao: agora.")
     },
     async (params) => {
       const startTime = Date.now();
-      const { vmName, vmId, limit = 25 } = params;
+      const { vmName, vmId, limit = 35, from, to } = params;
+      const win = resolveTimeWindow({ from, to });
+      if (win.error) {
+        return { content: [{ type: "text", text: win.error }], isError: true };
+      }
 
       try {
         // Validate at least one parameter
         if (!vmName && !vmId) {
           throw new Error(
-            "You must provide vmName OR vmId.\n" +
-            'Examples: vmName: "VM-Production-01" or vmId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"'
+            "Voce deve informar vmName OU vmId.\n" +
+            'Exemplos: vmName: "GEPMWVM010" ou vmId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"'
           );
         }
 
@@ -59,7 +67,7 @@ export default function(server) {
         const apiUrl = `https://${host}:${port}/api/v1/backupObjects/${encodeURIComponent(finalVmId)}/restorePoints?${queryParams.toString()}`;
         console.log(`[veeam_search_restore_points] GET ${apiUrl}`);
 
-        const response = await fetch(apiUrl, {
+        const response = await vbrFetch(apiUrl, {
           method: 'GET',
           headers: {
             'accept': 'application/json',
@@ -124,24 +132,46 @@ export default function(server) {
 
         enrichedPoints.sort((a, b) => new Date(b.creationTime) - new Date(a.creationTime));
 
-        // Analyze
-        const analysis = analyzeRestorePoints(enrichedPoints);
+        // @MX:NOTE: optional date window (from/to, any format). When given, scope the points to
+        // it; otherwise use all. The span/analysis below reflect the scoped set.
+        const scoped = win.since
+          ? enrichedPoints.filter(p => { const t = new Date(p.creationTime); return t >= win.since && (!win.until || t <= win.until); })
+          : enrichedPoints;
+
+        // Analyze over the scoped points (retention span stays accurate for the window)...
+        const analysis = analyzeRestorePoints(scoped);
+        // @MX:NOTE: ...but cap the rendered LIST at `limit`. The VBR endpoint sometimes ignores
+        // the limit query param and returns the whole chain (dozens of rows) — slicing here
+        // guarantees the cap so a weak LLM doesn't get a context-blowing dump.
+        const displayed = scoped.slice(0, limit);
+
+        // @MX:NOTE: surface the owning job (user wants RP info tied to its job). Best-effort:
+        // restore points carry backupId; /backups/{id} carries the job name. Never blocks.
+        let jobName = null;
+        const backupId = scoped[0]?.backupId;
+        if (backupId) {
+          const bRes = await vbrTryGet(`https://${host}:${port}/api/v1/backups/${backupId}`, {
+            headers: { 'accept': 'application/json', 'x-api-version': apiVersion, 'Authorization': `Bearer ${token}` }
+          });
+          jobName = bRes.data?.name ?? null;
+        }
 
         // Build response
         const responseData = {
           summary: {
-            message: `${enrichedPoints.length} restore point(s) available`,
-            vmName: vmName || enrichedPoints[0]?.vmName || "N/A",
+            message: `${scoped.length} restore point(s)${win.since ? ` na janela (${win.label})` : ' available'}`,
+            vmName: vmName || scoped[0]?.vmName || "N/A",
             vmId: finalVmId,
-            count: enrichedPoints.length,
-            mostRecent: enrichedPoints[0]?.creationTimeFormatted || "N/A",
-            oldest: enrichedPoints[enrichedPoints.length - 1]?.creationTimeFormatted || "N/A",
+            jobName: jobName || "N/A",
+            count: scoped.length,
+            mostRecent: scoped[0]?.creationTimeFormatted || "N/A",
+            oldest: scoped[scoped.length - 1]?.creationTimeFormatted || "N/A",
             timestamp: new Date().toISOString()
           },
           analysis,
-          restorePoints: enrichedPoints.map(point => ({
+          restorePoints: displayed.map(point => ({
             id: point.id,
-            vmName: point.vmName,
+            vmName: point.vmName || point.name || vmName || null,
             vmId: point.vmId,
             creationTime: point.creationTime,
             creationTimeFormatted: point.creationTimeFormatted,
@@ -160,7 +190,7 @@ export default function(server) {
           responseData.restorePoints,
           "veeam_search_restore_points",
           { vmName: vmName || null, vmId: finalVmId },
-          restorePointsData.pagination
+          { total: scoped.length, count: displayed.length, limit }
         );
 
         const finalResponse = {
@@ -174,7 +204,7 @@ export default function(server) {
       } catch (error) {
         console.error('[veeam_search_restore_points] Error:', error);
         return {
-          content: [{ type: "text", text: `Error: ${error.message}` }],
+          content: [{ type: "text", text: `Erro: ${error.message}` }],
           isError: true
         };
       }
@@ -200,10 +230,13 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
   };
 
   // ── Primary path: /api/v1/backupObjects (VBR REST API v1.2-rev0) ──────────
-  const backupObjectsUrl = `https://${host}:${port}/api/v1/backupObjects?nameFilter=${encodeURIComponent(vmName)}&limit=50&skip=0`;
+  // @MX:NOTE: nameFilter needs explicit wildcards for partial/substring matches, otherwise
+  // "GWPMWVM010" won't match the object "GWPMWVM010-AD". Wrap with * (user wants partial search).
+  const wildName = vmName.includes('*') ? vmName : `*${vmName}*`;
+  const backupObjectsUrl = `https://${host}:${port}/api/v1/backupObjects?nameFilter=${encodeURIComponent(wildName)}&limit=50&skip=0`;
   console.log(`[findVmIdByName] Trying primary path: ${backupObjectsUrl}`);
 
-  const primaryResponse = await fetch(backupObjectsUrl, { method: 'GET', headers, agent: httpsAgent });
+  const primaryResponse = await vbrFetch(backupObjectsUrl, { method: 'GET', headers, agent: httpsAgent });
 
   if (primaryResponse.ok) {
     const objectsData = await primaryResponse.json();
@@ -213,14 +246,22 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
     if (objects.length > 0) {
       const matched = searchByName(objects, vmName, 'name');
       if (matched.length > 0) {
-        const found = matched[0];
         // @MX:NOTE: backupObjects exposes two IDs:
         //   - "id"       = Veeam UUID (accepted by /api/v1/backupObjects/{id}/restorePoints)
         //   - "objectId" = vSphere managed object reference (e.g. "vm-154058"), NOT valid here.
-        // Always prefer "id"; fall back to "objectId" only if the UUID is missing.
-        const resolvedId = found.id ?? found.objectId;
-        console.log(`[findVmIdByName] [primary] Found: "${found.name}" (backupObjectId: ${resolvedId})`);
-        return resolvedId;
+        // selectVmMatch prefers "id" and dedupes by distinct VM name (see V1 below).
+        const pick = selectVmMatch(matched);
+        // @MX:NOTE: V1 — a partial term hitting several DISTINCT VMs used to pick matched[0]
+        // silently, hiding the other VMs' points. Surface candidates so the answer is never
+        // silently incomplete; the caller re-queries with a specific VM name.
+        if (pick.ambiguous) {
+          throw new Error(
+            `"${vmName}" casa ${pick.candidates.length} VMs distintas: ${pick.candidates.slice(0, 12).join(', ')}.\n` +
+            `Especifique o nome completo da VM (ex: "${pick.candidates[0]}") para ver seus restore points.`
+          );
+        }
+        console.log(`[findVmIdByName] [primary] Found: "${pick.name}" (backupObjectId: ${pick.id})`);
+        return pick.id;
       }
     }
 
@@ -243,7 +284,7 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
   console.log(`[findVmIdByName] Primary path returned 404; falling back to /api/v1/vmRestorePoints`);
 
   const fallbackUrl = `https://${host}:${port}/api/v1/vmRestorePoints?limit=1000&skip=0`;
-  const fallbackResponse = await fetch(fallbackUrl, { method: 'GET', headers, agent: httpsAgent });
+  const fallbackResponse = await vbrFetch(fallbackUrl, { method: 'GET', headers, agent: httpsAgent });
 
   if (!fallbackResponse.ok) {
     const errorText = await fallbackResponse.text();
@@ -284,9 +325,16 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
     );
   }
 
-  const foundVM = matchedVMs[0];
-  console.log(`[findVmIdByName] [fallback] Found VM: "${foundVM.vmName}" (ID: ${foundVM.vmId})`);
-  return foundVM.vmId;
+  // @MX:NOTE: V1 — same distinct-VM disambiguation as the primary path (was matchedVMs[0]).
+  const pickFb = selectVmMatch(matchedVMs);
+  if (pickFb.ambiguous) {
+    throw new Error(
+      `"${vmName}" casa ${pickFb.candidates.length} VMs distintas: ${pickFb.candidates.slice(0, 12).join(', ')}.\n` +
+      `Especifique o nome completo da VM (ex: "${pickFb.candidates[0]}") para ver seus restore points.`
+    );
+  }
+  console.log(`[findVmIdByName] [fallback] Found VM: "${pickFb.name}" (ID: ${pickFb.id})`);
+  return pickFb.id;
 }
 
 function formatRestorePointType(type) {

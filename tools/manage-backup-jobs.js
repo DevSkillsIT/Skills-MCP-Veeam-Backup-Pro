@@ -5,16 +5,17 @@
 //
 // Unified job management via action parameter.
 
-import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { validateJobOperation, validateVeeamId, validateUUID } from "../lib/validation-helpers.js";
 import { logOperation } from "../lib/audit-logger.js";
-import { formatDateTime } from "../lib/format-helpers.js";
+import { formatDateTime, deriveScheduleType } from "../lib/format-helpers.js";
 import { enrichResponse, enrichOperationResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
 import { safetyGuard } from "../lib/safety-guard.js";
 import { formatDescriptionForAI, getDescriptionFallback } from "../lib/description-helpers.js";
+import { getJobObjects, getRestorePointSpan, resolveJobId, isUuid } from "../lib/backup-coverage.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -25,7 +26,7 @@ export default function(server) {
     "veeam_manage_backup_jobs",
     {
       action: z.enum(["get_details", "get_schedule", "start", "stop"]).describe("Action to perform on the job"),
-      jobId: z.string().describe("UUID of the backup job"),
+      jobId: z.string().describe("Nome (parcial) OU UUID do backup job. O nome exibido por search_backup_jobs e resolvido para UUID automaticamente; se casar varios jobs, retorna os candidatos."),
       fullBackup: z.boolean().default(false).optional().describe("Force full backup instead of incremental (only for 'start' action)"),
       includeSessions: z.boolean().default(true).optional().describe("If true, fetches recent sessions for this job and renders them in the 'Sessões Recentes' table. Keep true for audit context; set false to skip the extra API round-trip when you only need static job config."),
       sessionLimit: z.number().min(1).max(100).default(10).optional().describe("Max recent sessions to fetch when includeSessions=true. Default 10 is enough for most checks (spot last run, see recent failure). Use 25 for weekly audit; values above 25 are rarely useful — the Markdown caps render at 25 rows regardless. Do not default to max (100) unless explicitly asked for deep history."),
@@ -36,35 +37,45 @@ export default function(server) {
       const startTime = Date.now();
       const { action, jobId, fullBackup = false, includeSessions = true, sessionLimit = 10, confirmationToken, reason } = params;
 
-      // Validate UUID format
-      const uuidCheck = validateUUID(jobId, 'jobId');
-      if (!uuidCheck.valid) {
-        return {
-          content: [{ type: "text", text: `Error: ${uuidCheck.error}` }],
-          isError: true
-        };
+      // @MX:NOTE: jobId accepts a job NAME (partial) or a UUID. search_backup_jobs shows names,
+      // not UUIDs, so requiring a UUID here was a dead-end for LLMs. Resolve name->UUID first.
+      let resolvedJobId = jobId;
+      if (!isUuid(jobId)) {
+        const ctx = await ensureAuthenticated();
+        // Destructive actions require an exact, unique name match (Codex safety point).
+        const exact = action === 'start' || action === 'stop';
+        const r = await resolveJobId(ctx, jobId, { exact });
+        if (r.error) {
+          return { content: [{ type: "text", text: `Erro: ${r.error}` }], isError: true };
+        }
+        resolvedJobId = r.id;
+      } else {
+        const uuidCheck = validateUUID(jobId, 'jobId');
+        if (!uuidCheck.valid) {
+          return { content: [{ type: "text", text: `Erro: ${uuidCheck.error}` }], isError: true };
+        }
       }
 
       try {
         switch (action) {
           case 'get_details':
-            return await handleGetDetails(jobId, includeSessions, sessionLimit, startTime);
+            return await handleGetDetails(resolvedJobId, includeSessions, sessionLimit, startTime);
           case 'get_schedule':
-            return await handleGetSchedule(jobId, startTime);
+            return await handleGetSchedule(resolvedJobId, startTime);
           case 'start':
-            return await handleStartJob(jobId, fullBackup, confirmationToken, reason, startTime);
+            return await handleStartJob(resolvedJobId, fullBackup, confirmationToken, reason, startTime);
           case 'stop':
-            return await handleStopJob(jobId, confirmationToken, reason, startTime);
+            return await handleStopJob(resolvedJobId, confirmationToken, reason, startTime);
           default:
             return {
-              content: [{ type: "text", text: `Error: Unknown action "${action}". Valid: get_details, get_schedule, start, stop` }],
+              content: [{ type: "text", text: `Erro: acao desconhecida "${action}". Acoes validas: get_details, get_schedule, start, stop` }],
               isError: true
             };
         }
       } catch (error) {
         console.error(`[veeam_manage_backup_jobs] Error (${action}):`, error);
         return {
-          content: [{ type: "text", text: `Error: ${error.message}` }],
+          content: [{ type: "text", text: `Erro: ${error.message}` }],
           isError: true
         };
       }
@@ -81,7 +92,7 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
   const jobUrl = `https://${host}:${port}/api/v1/jobs/${jobId}`;
   console.log(`[manage_backup_jobs:get_details] Fetching: ${jobUrl}`);
 
-  const jobResponse = await fetch(jobUrl, {
+  const jobResponse = await vbrFetch(jobUrl, {
     method: 'GET',
     headers: {
       'accept': 'application/json',
@@ -102,7 +113,7 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
       console.log(`[manage_backup_jobs:get_details] Platform not supported. Trying fallback via sessions...`);
 
       const fallbackUrl = `https://${host}:${port}/api/v1/sessions?jobIdFilter=${jobId}&limit=1&sortOrder=descending`;
-      const fallbackResponse = await fetch(fallbackUrl, {
+      const fallbackResponse = await vbrFetch(fallbackUrl, {
         method: 'GET',
         headers: {
           'accept': 'application/json',
@@ -159,7 +170,7 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
     // non-fatal — the main config is already loaded.
     try {
       const stateUrl = `https://${host}:${port}/api/v1/jobs/states?idFilter=${encodeURIComponent(jobId)}&limit=1`;
-      const stateResp = await fetch(stateUrl, {
+      const stateResp = await vbrFetch(stateUrl, {
         method: 'GET',
         headers: {
           'accept': 'application/json',
@@ -200,12 +211,15 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
       state: jobData.state ?? null,
       platformName: jobData.platformName ?? null,
       description: jobData.description ?? null,
-      scheduleEnabled: jobData.scheduleEnabled ?? (jobData.isDisabled === false) ?? null,
-      scheduleType: jobData.scheduleType ?? jobData.schedule?.type ?? null,
+      // @MX:NOTE: V3 — derive schedule/retry from the REAL schedule object so get_details
+      // agrees with get_schedule (was reading non-existent type/retryTimes/retryTimeout → 0x).
+      scheduleEnabled: jobData.scheduleEnabled ?? (jobData.isDisabled === false) ?? !!jobData.schedule?.runAutomatically,
+      scheduleType: jobData.scheduleType ?? deriveScheduleType(jobData.schedule),
       lastRun: jobData.lastRun ?? null,
       nextRun: jobData.nextRun ?? null,
-      retryCount: jobData.retryCount ?? jobData.schedule?.retry?.retryTimes ?? null,
-      retryWait: jobData.retryWait ?? jobData.schedule?.retry?.retryTimeout ?? null,
+      retryEnabled: jobData.schedule?.retry?.isEnabled ?? (jobData.retryCount != null ? true : false),
+      retryCount: jobData.retryCount ?? jobData.schedule?.retry?.retryCount ?? 0,
+      retryWait: jobData.retryWait ?? jobData.schedule?.retry?.awaitMinutes ?? 0,
       result: jobData.result?.result ?? null,
       message: jobData.result?.message ?? null,
       sessionId: jobData.sessionId ?? null,
@@ -230,7 +244,7 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
   // Include recent sessions if requested
   if (includeSessions) {
     const sessionsUrl = `https://${host}:${port}/api/v1/sessions?limit=${sessionLimit}&jobIdFilter=${jobId}`;
-    const sessionsResponse = await fetch(sessionsUrl, {
+    const sessionsResponse = await vbrFetch(sessionsUrl, {
       method: 'GET',
       headers: {
         'accept': 'application/json',
@@ -259,6 +273,41 @@ async function handleGetDetails(jobId, includeSessions, sessionLimit, startTime)
     }
   }
 
+  // @MX:NOTE: Protected VMs + restore-point coverage — mirrors the Veeam console's
+  // expand-job view (VMs and their restore-point counts). Best-effort: an offline host or
+  // slow component is caught and the section is simply omitted, never breaking get_details.
+  try {
+    const ctx = { host, port, token, apiVersion };
+    const objects = await getJobObjects(ctx, jobId);
+    if (objects.length) {
+      const capped = objects.slice(0, 30);
+      // @MX:NOTE: run span lookups with bounded concurrency (5) so 30 VMs with an offline
+      // repo can't serialize into minutes. Each span fetch is short-timeout + best-effort;
+      // a failed one is marked unavailable rather than indistinguishable from "no points".
+      const concurrency = 5;
+      const vms = [];
+      for (let i = 0; i < capped.length; i += concurrency) {
+        const chunk = capped.slice(i, i + concurrency);
+        const spans = await Promise.all(chunk.map(o => getRestorePointSpan(ctx, o.id, o.restorePointsCount)));
+        chunk.forEach((o, idx) => {
+          const span = spans[idx];
+          const unavailable = span?.unavailable === true;
+          vms.push({
+            name: o.name,
+            restorePointsCount: unavailable ? (o.restorePointsCount ?? null) : (span?.count ?? o.restorePointsCount ?? null),
+            oldestRestorePoint: unavailable ? null : (span?.oldest ?? null),
+            newestRestorePoint: unavailable ? null : (span?.newest ?? null),
+            approxOldest: span?.approxOldest ?? false,
+            restorePointSpanUnavailable: unavailable
+          });
+        });
+      }
+      result.protectedVms = { total: objects.length, shown: vms.length, vms };
+    }
+  } catch (covErr) {
+    console.warn('[manage_backup_jobs:get_details] VM coverage enrichment failed:', covErr.message);
+  }
+
   return {
     content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
   };
@@ -274,7 +323,7 @@ async function handleGetSchedule(jobId, startTime) {
   const apiUrl = `https://${host}:${port}/api/v1/jobs/${jobId}`;
   console.log(`[manage_backup_jobs:get_schedule] Fetching: ${apiUrl}`);
 
-  const response = await fetch(apiUrl, {
+  const response = await vbrFetch(apiUrl, {
     method: 'GET',
     headers: {
       'accept': 'application/json',
@@ -294,15 +343,20 @@ async function handleGetSchedule(jobId, startTime) {
 
   const jobData = await response.json();
 
-  const scheduleInfo = {
-    enabled: jobData.scheduleEnabled || false,
-    type: jobData.scheduleType || "None",
-    retry: {
-      enabled: (jobData.retryCount || 0) > 0,
-      count: jobData.retryCount || 0,
-      waitMinutes: jobData.retryWait || 0
+  // @MX:NOTE: the real schedule lives in jobData.schedule (daily/monthly/periodically/...),
+  // NOT in non-existent scheduleEnabled/scheduleType. Pass the RAW schedule to the formatter.
+  // /jobs/{id} has no lastRun/nextRun — enrich from /jobs/states (best-effort) so the schedule
+  // view agrees with get_details.
+  let lastRun = null, nextRun = null, lastResult = null;
+  try {
+    const stateResp = await vbrFetch(`https://${host}:${port}/api/v1/jobs/states?idFilter=${encodeURIComponent(jobId)}&limit=1`, {
+      headers: { 'accept': 'application/json', 'x-api-version': apiVersion, 'Authorization': `Bearer ${token}` }
+    });
+    if (stateResp.ok) {
+      const s = (await stateResp.json())?.data?.[0];
+      if (s) { lastRun = s.lastRun ?? null; nextRun = s.nextRun ?? null; lastResult = s.lastResult ?? null; }
     }
-  };
+  } catch (e) { console.warn('[get_schedule] states enrichment failed:', e.message); }
 
   const responseData = {
     summary: {
@@ -310,16 +364,15 @@ async function handleGetSchedule(jobId, startTime) {
       jobId: jobData.id,
       jobName: jobData.name,
       jobType: jobData.type,
-      scheduleEnabled: jobData.scheduleEnabled,
       timestamp: new Date().toISOString()
     },
-    schedule: scheduleInfo,
+    schedule: jobData.schedule || {},
     execution: {
-      lastRun: jobData.lastRun,
-      lastRunFormatted: formatDateTime(jobData.lastRun),
-      nextRun: jobData.nextRun,
-      nextRunFormatted: formatDateTime(jobData.nextRun),
-      lastResult: jobData.result?.result,
+      lastRun,
+      lastRunFormatted: formatDateTime(lastRun),
+      nextRun,
+      nextRunFormatted: formatDateTime(nextRun),
+      lastResult,
       lastResultMessage: jobData.result?.message || "N/A"
     },
     jobInfo: {
@@ -364,7 +417,7 @@ async function handleStartJob(jobId, fullBackup, confirmationToken, reason, star
 
   console.log(`[manage_backup_jobs:start] POST ${startUrl}`);
 
-  const response = await fetch(startUrl, {
+  const response = await vbrFetch(startUrl, {
     method: 'POST',
     headers: {
       'accept': 'application/json',
@@ -453,7 +506,7 @@ async function handleStopJob(jobId, confirmationToken, reason, startTime) {
   const stopUrl = `https://${host}:${port}/api/v1/jobs/${jobId}/stop`;
   console.log(`[manage_backup_jobs:stop] POST ${stopUrl}`);
 
-  const response = await fetch(stopUrl, {
+  const response = await vbrFetch(stopUrl, {
     method: 'POST',
     headers: {
       'accept': 'application/json',

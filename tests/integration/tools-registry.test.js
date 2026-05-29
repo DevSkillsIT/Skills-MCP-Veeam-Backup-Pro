@@ -118,11 +118,13 @@ describe('Tool Annotations (ALL tools)', () => {
 
 describe('Token Control — Limits', () => {
 
-  it('TODAS as tools com limit usam default=25', () => {
+  it('TODAS as tools com limit usam default=35', () => {
+    // @MX:NOTE: default raised 25→35 in the dictionary (SPEC part 8); this stale assertion
+    // still expected 25. Aligned to the real default.
     for (const tool of tools) {
       const limitProp = tool.inputSchema?.properties?.limit;
       if (limitProp) {
-        assert.equal(limitProp.default, 25, `${tool.name}: limit default=${limitProp.default}`);
+        assert.equal(limitProp.default, 35, `${tool.name}: limit default=${limitProp.default}`);
       }
     }
   });

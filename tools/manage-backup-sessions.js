@@ -4,12 +4,13 @@
 //
 // Session management with action parameter (currently: get_log).
 
-import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
+import { getTaskSessionResults } from "../lib/backup-coverage.js";
 import { validateSessionExists, validateVeeamId, validateUUID } from "../lib/validation-helpers.js";
-import { formatDateTime, formatLogMessage } from "../lib/format-helpers.js";
+import { formatDateTime, formatLogMessage, deriveLogLevel } from "../lib/format-helpers.js";
 import { enrichResponse, createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
 
 const httpsAgent = new https.Agent({
@@ -32,7 +33,7 @@ export default function(server) {
       const uuidCheck = validateUUID(sessionId, 'sessionId');
       if (!uuidCheck.valid) {
         return {
-          content: [{ type: "text", text: `Error: ${uuidCheck.error}` }],
+          content: [{ type: "text", text: `Erro: ${uuidCheck.error}` }],
           isError: true
         };
       }
@@ -43,14 +44,14 @@ export default function(server) {
             return await handleGetLog(sessionId, logLevel, startTime);
           default:
             return {
-              content: [{ type: "text", text: `Error: Unknown action "${action}". Valid: get_log` }],
+              content: [{ type: "text", text: `Erro: acao desconhecida "${action}". Acoes validas: get_log` }],
               isError: true
             };
         }
       } catch (error) {
         console.error(`[veeam_manage_backup_sessions] Error (${action}):`, error);
         return {
-          content: [{ type: "text", text: `Error: ${error.message}` }],
+          content: [{ type: "text", text: `Erro: ${error.message}` }],
           isError: true
         };
       }
@@ -74,7 +75,7 @@ async function handleGetLog(sessionId, logLevel, startTime) {
   let logUrl = `https://${host}:${port}/api/v1/sessions/${sessionId}/log`;
   console.log(`[manage_backup_sessions:get_log] Trying: ${logUrl}`);
 
-  let response = await fetch(logUrl, {
+  let response = await vbrFetch(logUrl, {
     method: 'GET',
     headers: {
       'accept': 'application/json',
@@ -93,7 +94,7 @@ async function handleGetLog(sessionId, logLevel, startTime) {
     logSource = "session-messages";
 
     const sessionUrl = `https://${host}:${port}/api/v1/sessions/${sessionId}`;
-    response = await fetch(sessionUrl, {
+    response = await vbrFetch(sessionUrl, {
       method: 'GET',
       headers: {
         'accept': 'application/json',
@@ -119,6 +120,31 @@ async function handleGetLog(sessionId, logLevel, startTime) {
   }
 
   console.log(`[manage_backup_sessions:get_log] Received ${logEntries.length} log entries`);
+
+  // @MX:NOTE: Error masking fix — the VBR /log endpoint often returns HTTP 200 with an
+  // empty list (not 404), so the 404 fallback above never fires and the failure reason is
+  // silently dropped. When we have no log lines but the session carries a result message,
+  // synthesize one entry from session.result so the cause of a failure is never hidden.
+  if (logEntries.length === 0) {
+    const resultMsg = session?.result?.message;
+    const resultName = session?.result?.result;
+    if (resultMsg || (resultName && String(resultName).toLowerCase() !== 'success')) {
+      const isFailure = String(resultName ?? '').toLowerCase() === 'failed' || String(resultName) === '2';
+      logEntries = [{
+        timestamp: session.endTime || session.creationTime,
+        level: isFailure ? 'Error' : (String(resultName ?? '').toLowerCase() === 'warning' ? 'Warning' : 'Info'),
+        message: resultMsg || `Session result: ${resultName}`,
+        component: 'session.result'
+      }];
+      logSource = 'session-result-fallback';
+      console.log(`[manage_backup_sessions:get_log] /log empty; synthesized entry from session.result (${resultName})`);
+    }
+  }
+
+  // @MX:NOTE: V2 — reclassify each entry's level from its message before filtering/analysis.
+  // VBR logs error text at level "Info", which made logLevel=Error/Warning return empty on
+  // failed sessions and undercounted errorCount. deriveLogLevel upgrades Error:/Warning: text.
+  logEntries = logEntries.map(entry => ({ ...entry, level: deriveLogLevel(entry) }));
 
   // Filter by logLevel
   if (logLevel !== "All") {
@@ -208,6 +234,19 @@ async function handleGetLog(sessionId, logLevel, startTime) {
       topErrors: analysis.topErrors,
       recommendations: generateTroubleshootingRecommendations(analysis)
     };
+  }
+
+  // @MX:NOTE: Per-VM results (console "Statistics"). A job session has one task session per
+  // VM, each with its own result + error message — this is how a multi-VM job surfaces a
+  // distinct cause per VM (e.g. CRC on one vhdx). Best-effort: omitted if unavailable.
+  try {
+    const { host, port, token, apiVersion } = await ensureAuthenticated();
+    const taskResults = await getTaskSessionResults({ host, port, token, apiVersion }, sessionId);
+    if (taskResults && taskResults.length) {
+      responseData.vmResults = taskResults;
+    }
+  } catch (trErr) {
+    console.warn('[manage_backup_sessions:get_log] taskSessions enrichment failed:', trErr.message);
   }
 
   const enrichedResponse = enrichResponse(

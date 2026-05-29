@@ -116,18 +116,18 @@ git checkout -b feat/nova-feature
 #### Passo 4: Desenvolva e Commit
 
 ```bash
-# Faça suas alterações
-nano tools/nova-tool.js
+# Faça suas alterações (padrão de nome: <verbo>-<recurso>.js)
+nano tools/search-novo-recurso.js
 
 # Adicione arquivos modificados
-git add tools/nova-tool.js
+git add tools/search-novo-recurso.js
 
 # Commit seguindo Conventional Commits (ver seção abaixo)
 git commit -m "feat(tools): adicionar tool de restore points"
 
 # Continue desenvolvendo...
 git add .
-git commit -m "test(tools): adicionar testes para restore-points-tool"
+git commit -m "test(tools): adicionar testes para search-restore-points"
 git commit -m "docs(readme): documentar uso da nova tool"
 ```
 
@@ -567,19 +567,19 @@ curl http://localhost:8825/health
 
 # Teste de autenticação
 curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
 # Executar ferramenta específica
 curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
   -H 'Content-Type: application/json' \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params":{
-      "name":"veeam_list_backup_jobs",
+      "name":"veeam_search_backup_jobs",
       "arguments":{}
     },
     "id":1
@@ -637,7 +637,7 @@ curl -X POST http://localhost:8825/job-details \
       "type": "streamable-http",
       "url": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       }
     }
   }
@@ -652,7 +652,7 @@ curl -X POST http://localhost:8825/job-details \
     "veeam-backup-dev": {
       "httpUrl": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       },
       "timeout": 30000
     }

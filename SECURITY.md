@@ -170,7 +170,7 @@ openssl rand -base64 24
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Exemplo de resultado:
-# bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+# SEU_TOKEN_AQUI
 ```
 
 **2. Configurar no `.env`**
@@ -183,7 +183,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # Token de autenticação para endpoints MCP (/mcp)
 # IMPORTANTE: Deve ter pelo menos 32 caracteres (recomendado: 64+)
 # Gerar com: openssl rand -hex 32
-AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+AUTH_TOKEN=SEU_TOKEN_AQUI
 ```
 
 **3. Aplicar Permissões**
@@ -227,7 +227,7 @@ pm2 restart mcp-veeam
       "type": "streamable-http",
       "url": "http://mcp.servidor.one:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       }
     }
   }
@@ -242,7 +242,7 @@ pm2 restart mcp-veeam
     "veeam-backup": {
       "httpUrl": "http://mcp.servidor.one:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       },
       "timeout": 30000
     }
@@ -256,7 +256,7 @@ pm2 restart mcp-veeam
 # Listar ferramentas disponíveis
 curl -X POST http://mcp.servidor.one:8825/mcp \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
   -d '{
     "jsonrpc":"2.0",
     "method":"tools/list",
@@ -411,17 +411,17 @@ O Safety Guard protege **2 operações críticas**:
 
 | Operação | Descrição | Impacto |
 |----------|-----------|---------|
-| **veeam_start_backup_job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
-| **veeam_stop_backup_job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
+| **`veeam_manage_backup_jobs` (action=start)** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
+| **`veeam_manage_backup_jobs` (action=stop)** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
 
 **Por que proteger estas operações?**
 
-**veeam_start_backup_job:**
+**`veeam_manage_backup_jobs` action=start:**
 - Consumo inesperado de recursos (CPU, rede, storage)
 - Pode conflitar com janela de backup programada
 - Impacto em VMs de produção (snapshots, I/O)
 
-**veeam_stop_backup_job:**
+**`veeam_manage_backup_jobs` action=stop:**
 - Backup incompleto = ponto de restauração inválido
 - Pode deixar snapshots órfãos nas VMs
 - Interrompe cadeia de backups incrementais
@@ -461,7 +461,7 @@ openssl rand -base64 24
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Exemplo de resultado:
-# 95742b66cf903e44cdfc5fd0c8120fb963a80e6514d09a87fe8c4a465dd793b3
+# SEU_TOKEN_AQUI
 ```
 
 **3. Aplicar Configuração**
@@ -494,8 +494,9 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params": {
-      "name": "veeam_start_backup_job",
+      "name": "veeam_manage_backup_jobs",
       "arguments": {
+        "action": "start",
         "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
         "fullBackup": false
       }
@@ -519,11 +520,12 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
     "jsonrpc":"2.0",
     "method":"tools/call",
     "params": {
-      "name": "veeam_start_backup_job",
+      "name": "veeam_manage_backup_jobs",
       "arguments": {
+        "action": "start",
         "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
         "fullBackup": false,
-        "confirmationToken": "95742b66cf903e44cdfc5fd0c8120fb963a80e6514d09a87fe8c4a465dd793b3",
+        "confirmationToken": "SEU_TOKEN_AQUI",
         "reason": "Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware no servidor de produção"
       }
     },
@@ -551,7 +553,7 @@ O Safety Guard executa as seguintes validações **em ordem**:
 **Erro 1: Confirmação Ausente**
 
 ```
-SAFETY GUARD: Operação "veeam_start_backup_job" requer confirmação explícita.
+SAFETY GUARD: Operação "veeam_manage_backup_jobs:start" requer confirmação explícita.
 
 Descrição: Iniciar backup job sob demanda (fora do schedule)
 Alvo: Job urn:veeam:Job:00000000-0000-0000-0000-000000000000
@@ -573,7 +575,7 @@ Verifique se está usando o token correto.
 **Erro 3: Reason Muito Curto**
 
 ```
-SAFETY GUARD: Justificativa obrigatória para operação "veeam_stop_backup_job".
+SAFETY GUARD: Justificativa obrigatória para operação "veeam_manage_backup_jobs:stop".
 
 A justificativa (reason) deve ter pelo menos 10 caracteres.
 Atual: 5 caracteres.
@@ -739,7 +741,7 @@ const activeSessions = new Map();
   id: "uuid-v4-here",
   createdAt: "2025-12-10T03:00:00.000Z",
   lastActivityAt: "2025-12-10T03:10:00.000Z",
-  clientIp: "172.16.1.100"
+  clientIp: "203.0.113.100"
 }
 ```
 
@@ -791,7 +793,7 @@ curl http://mcp.servidor.one:8825/mcp-sessions
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "createdAt": "2025-12-10T03:00:00.000Z",
       "lastActivityAt": "2025-12-10T03:10:00.000Z",
-      "clientIp": "172.16.1.100"
+      "clientIp": "203.0.113.100"
     }
   ]
 }
@@ -887,7 +889,7 @@ server {
     limit_req zone=mcp_limit burst=20 nodelay;
 
     # IP Whitelisting (opcional)
-    allow 192.168.1.0/24;   # Rede interna
+    allow 203.0.113.0/24;   # Rede interna
     allow 10.0.0.0/8;       # VPN corporativa
     deny all;
 
@@ -1079,7 +1081,7 @@ VEEAM_IGNORE_SSL=false
 # Token de autenticação para endpoints MCP (/mcp)
 # Gerar com: openssl rand -hex 32
 # Mínimo 32 caracteres (recomendado: 64)
-AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+AUTH_TOKEN=SEU_TOKEN_AQUI
 
 # ============================================================================
 # SAFETY GUARD - Proteção para operações críticas
@@ -1091,7 +1093,7 @@ MCP_SAFETY_GUARD=false
 # Token de segurança para autorizar operações críticas
 # Gerar com: openssl rand -hex 32
 # Mínimo 8 caracteres (recomendado: 16+)
-MCP_SAFETY_TOKEN=95742b66cf903e44cdfc5fd0c8120fb963a80e6514d09a87fe8c4a465dd793b3
+MCP_SAFETY_TOKEN=SEU_TOKEN_AQUI
 
 # ============================================================================
 # SERVER - Configuração HTTP
@@ -1188,7 +1190,7 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 
 # Permitir MCP Server APENAS da rede interna
-ufw allow from 192.168.1.0/24 to any port 8825
+ufw allow from 203.0.113.0/24 to any port 8825
 
 # Bloquear tudo mais
 ufw default deny incoming
@@ -1238,7 +1240,7 @@ iptables -A INPUT -p tcp --dport 80 -j ACCEPT
 iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
 # Allow MCP Server from internal network only
-iptables -A INPUT -p tcp -s 192.168.1.0/24 --dport 8825 -j ACCEPT
+iptables -A INPUT -p tcp -s 203.0.113.0/24 --dport 8825 -j ACCEPT
 
 # Rate limiting (anti DDoS)
 iptables -A INPUT -p tcp --dport 8825 -m limit --limit 10/s --limit-burst 20 -j ACCEPT
@@ -1329,7 +1331,7 @@ O sistema registra **todas** as operações críticas protegidas pelo Safety Gua
     "timestamp": "2025-12-10T14:30:00.000Z"
   },
   "environment": {
-    "veeamHost": "SKPMWVM006.ad.skillsit.com.br",
+    "veeamHost": "veeam-server.domain.com",
     "mcpVersion": "1.0.0"
   }
 }
@@ -1392,7 +1394,7 @@ grep "rejected" logs/audit.log | jq -s '
   "component": "auth-middleware",
   "action": "token_refresh",
   "user": "svc-mcp-reader",
-  "client_ip": "192.168.1.50",
+  "client_ip": "203.0.113.50",
   "duration_ms": 234,
   "status": "success"
 }
@@ -1713,9 +1715,8 @@ Este documento foi atualizado com **4 novas camadas de segurança** implementada
 
 Para informações técnicas detalhadas sobre cada implementação:
 
-- **MCP HTTP Streamable:** [`docs/IMPLEMENTACAO-MCP-HTTP-STREAMABLE.md`](docs/IMPLEMENTACAO-MCP-HTTP-STREAMABLE.md)
+- **Arquitetura (transporte MCP HTTP Streamable):** [`ARCHITECTURE_AND_DESIGN.md`](ARCHITECTURE_AND_DESIGN.md)
 - **Safety Guard:** [`docs/SAFETY_GUARD.md`](docs/SAFETY_GUARD.md)
-- **Melhorias de Segurança:** [`docs/SECURITY_IMPROVEMENTS_IMPLEMENTED.md`](docs/SECURITY_IMPROVEMENTS_IMPLEMENTED.md)
 - **Código-fonte:**
   - Autenticação MCP: [`lib/mcp-auth-middleware.js`](lib/mcp-auth-middleware.js)
   - Safety Guard: [`lib/safety-guard.js`](lib/safety-guard.js)

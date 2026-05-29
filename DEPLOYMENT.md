@@ -99,7 +99,7 @@ docker run -d -p 8825:8825 veeam-mcp:latest node vbr-mcp-server.js --port=8825
       "type": "streamable-http",
       "url": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       }
     }
   }
@@ -114,7 +114,7 @@ docker run -d -p 8825:8825 veeam-mcp:latest node vbr-mcp-server.js --port=8825
     "veeam-backup": {
       "httpUrl": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       },
       "timeout": 30000
     }
@@ -309,7 +309,7 @@ docker-compose -f docker-compose.staging.yml up -d
 **Arquivo .env:**
 ```bash
 # MCP HTTP Streamable Authentication
-AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+AUTH_TOKEN=SEU_TOKEN_AQUI
 ```
 
 **Gerar Token Seguro:**
@@ -386,7 +386,7 @@ sudo ufw allow 8000/tcp
 sudo ufw allow 9419/tcp
 
 # Restrict to specific networks
-sudo ufw allow from 192.168.1.0/24 to any port 8000
+sudo ufw allow from 203.0.113.0/24 to any port 8000
 ```
 
 ### Load Balancer Configuration

@@ -2,7 +2,7 @@
 # Teste das 3 buscas semânticas implementadas
 
 API_URL="http://localhost:8825/mcp"
-AUTH_TOKEN="bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+AUTH_TOKEN="SEU_TOKEN_AQUI"
 
 echo "================================================"
 echo "🔍 Veeam MCP - Testes de Busca Semântica"

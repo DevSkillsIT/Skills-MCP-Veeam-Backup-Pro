@@ -57,7 +57,7 @@ async function runTests() {
   console.log("🚀 Veeam VBR MCP Server - Skills IT Test Suite");
   console.log("=================================================");
   console.log(`URL Base: ${BASE_URL}`);
-  console.log(`Servidor Veeam: SKPMWVM006.ad.skillsit.com.br:9398`);
+  console.log(`Servidor Veeam: <definido em .env via VEEAM_HOST>`);
   console.log("");
 
   // Test basic endpoints

@@ -5,12 +5,14 @@
 // Supports ALL job types via typeFilter including BackupCopy.
 // Returns JSON (interceptor handles Markdown conversion).
 
-import fetch from "node-fetch";
 import https from "https";
 import { z } from "zod";
 import { ensureAuthenticated } from "../lib/auth-middleware.js";
 import { searchByDescription, formatDescriptionForAI } from "../lib/description-helpers.js";
 import { createMCPResponse, addPerformanceMetrics } from "../lib/response-enricher.js";
+import { findJobsByVmName } from "../lib/backup-coverage.js";
+import { vbrFetch } from "../lib/veeam-fetch.js";
+import { groupSessionsByJob, SESSION_SCAN } from "../lib/session-aggregation.js";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.VEEAM_IGNORE_SSL === 'true'
@@ -20,7 +22,7 @@ export default function(server) {
   server.tool(
     "veeam_search_backup_jobs",
     {
-      limit: z.number().min(1).max(50).default(25).describe("Max jobs to return (default 25, hard max 50). This VBR has ~21 backup jobs total, so limit=25 already captures everything. Do not set above total job count — it only wastes API bandwidth. Pair with nameFilter='*keyword*' (auto-wildcarded) to narrow results."),
+      limit: z.number().min(1).max(50).default(35).describe("Max jobs to return (default 35, hard max 50). This VBR has ~21 backup jobs total, so the default already captures everything. Pair with nameFilter='*keyword*' (auto-wildcarded, matches job OR VM name) to narrow results."),
       skip: z.number().min(0).default(0).describe("Number of jobs to skip for pagination"),
       // @MX:NOTE: Empirically verified against VBR 12.3.2.3617 / REST API v1.2-rev0:
       // Only "Backup" is accepted on /api/v1/jobs?typeFilter=. Values VmReplica / BackupSync /
@@ -37,7 +39,7 @@ export default function(server) {
       try {
         const { host, port, token, apiVersion } = await ensureAuthenticated();
         const {
-          limit = 25,
+          limit = 35,
           skip = 0,
           typeFilter = "Backup",
           stateFilter,
@@ -78,7 +80,7 @@ export default function(server) {
         const apiUrl = `https://${host}:${port}/api/v1/jobs/states?${queryParams.toString()}`;
         console.log(`[veeam_search_backup_jobs] Fetching jobs from: ${apiUrl}`);
 
-        const response = await fetch(apiUrl, {
+        const response = await vbrFetch(apiUrl, {
           method: 'GET',
           headers: {
             'accept': 'application/json',
@@ -107,6 +109,39 @@ export default function(server) {
         }
 
         // nameFilter is sent to the API as a query param (see above); no client-side filter needed.
+
+        // Transparent VM-name search: the search term may be a VM INSIDE a job, not the job
+        // name. Resolve VM -> job(s) so the user can search by either, without knowing which.
+        if ((!filteredJobs || filteredJobs.length === 0) && nameFilter) {
+          const term = nameFilter.replace(/\*/g, '');
+          const byVm = await findJobsByVmName({ host, port, token, apiVersion }, term);
+          if (byVm.length) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ matchedByVm: true, searchTerm: term, jobs: byVm }, null, 2)
+              }]
+            };
+          }
+        }
+
+        // No results in the /jobs inventory. Hybrid coverage: a job may exist as an
+        // Agent/Replica/Copy/remote-site job that this endpoint does not return. Derive it
+        // from the session history so it is no longer invisible (resolves the CDL / AC-* gap).
+        // @MX:NOTE: derivation matches by session NAME, so only run it for nameFilter — a
+        // description-only search would otherwise match names misleadingly.
+        if ((!filteredJobs || filteredJobs.length === 0) && nameFilter) {
+          const term = nameFilter.replace(/\*/g, '');
+          const derived = await deriveJobsFromSessions({ host, port, token, apiVersion, term });
+          if (derived.length) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ derivedFromSessions: true, searchTerm: term, jobs: derived }, null, 2)
+              }]
+            };
+          }
+        }
 
         // No results
         if (!filteredJobs || filteredJobs.length === 0) {
@@ -157,6 +192,7 @@ export default function(server) {
             scheduleType: job.scheduleType,
             lastRun: job.lastRun,
             nextRun: job.nextRun,
+            objectsCount: job.objectsCount ?? null,
             retryCount: job.retryCount,
             retryWait: job.retryWait,
             result: job.lastResult ?? job.result?.result ?? null,
@@ -187,11 +223,53 @@ export default function(server) {
         return {
           content: [{
             type: "text",
-            text: `Error: ${error.message}`
+            text: `Erro: ${error.message}`
           }],
           isError: true
         };
       }
     }
   );
+}
+
+// ============================================================================
+// Hybrid coverage: derive jobs from session history (for jobs absent from /jobs)
+// ============================================================================
+
+// Scans recent sessions (newest-first, capped) for names matching `term`, then collapses
+// them into one entry per job — last result + run + attempt count. Returns [] if none.
+async function deriveJobsFromSessions({ host, port, token, apiVersion, term }) {
+  const headers = { 'accept': 'application/json', 'x-api-version': apiVersion, 'Authorization': `Bearer ${token}` };
+  const needle = String(term || '').toLowerCase();
+  if (!needle) return [];
+
+  const { pageSize, maxPages, deriveLookbackHours } = SESSION_SCAN;
+  const cutoff = new Date(Date.now() - deriveLookbackHours * 60 * 60 * 1000);
+  const matched = [];
+
+  for (let page = 0; page < maxPages; page++) {
+    const qp = new URLSearchParams({ limit: String(pageSize), skip: String(page * pageSize) });
+    const url = `https://${host}:${port}/api/v1/sessions?${qp.toString()}`;
+    const resp = await vbrFetch(url, { method: 'GET', headers, agent: httpsAgent });
+    if (!resp.ok) break;
+    const json = await resp.json();
+    const batch = json.data || [];
+    matched.push(...batch);
+    if (batch.length < pageSize) break;
+    const oldest = batch[batch.length - 1]?.creationTime;
+    if (oldest && new Date(oldest) < cutoff) break;
+  }
+
+  // Group by job via shared helper (filters by name substring).
+  return groupSessionsByJob(matched, { nameNeedle: needle }).map(g => ({
+    id: g.jobId,
+    name: g.name,
+    type: g.sessionType,
+    state: 'externo (via sessoes)',
+    result: g.last?.label ?? null,
+    lastRun: g.last?.creationTime ?? null,
+    objectsCount: null,
+    attemptsLast7d: g.attempts,
+    failuresLast7d: g.failed
+  }));
 }

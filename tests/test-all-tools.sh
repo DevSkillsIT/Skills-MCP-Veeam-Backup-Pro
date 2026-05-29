@@ -6,7 +6,7 @@ echo "🧪 Testando as 15 ferramentas do Veeam Backup MCP"
 echo "================================================"
 echo ""
 
-TOKEN="bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+TOKEN="SEU_TOKEN_AQUI"
 ENDPOINT="http://localhost:8825/mcp"
 
 # Contador de resultados

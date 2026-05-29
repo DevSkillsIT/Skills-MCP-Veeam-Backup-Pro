@@ -116,7 +116,7 @@ Resultado: Todos jobs com contrato Premium
 ### Pergunta 1: "Qual é o status dos backups do cliente ACME?"
 Claude faz:
 ```
-1. Busca veeam_list_backup_jobs com descriptionFilter="ACME"
+1. Busca veeam_search_backup_jobs com descriptionFilter="ACME"
 2. Encontra todos os jobs ACME
 3. Verifica status de cada um
 4. Responde com status consolidado
@@ -125,7 +125,7 @@ Claude faz:
 ### Pergunta 2: "Quais backups estão falhando em Curitiba?"
 Claude faz:
 ```
-1. Busca veeam_list_backup_jobs com descriptionFilter="Curitiba"
+1. Busca veeam_search_backup_jobs com descriptionFilter="Curitiba"
 2. Filtra por state="Failed"
 3. Retorna lista de jobs falhando em Curitiba
 4. Propõe ações corretivas
@@ -134,7 +134,7 @@ Claude faz:
 ### Pergunta 3: "Listar todos os contratos Enterprise"
 Claude faz:
 ```
-1. Busca veeam_list_backup_jobs com descriptionFilter="Enterprise"
+1. Busca veeam_search_backup_jobs com descriptionFilter="Enterprise"
 2. Retorna todos os jobs Enterprise
 3. Agrupa por cliente
 4. Exibe relatório consolidado
@@ -144,7 +144,7 @@ Claude faz:
 
 ## API Reference - Novos Parâmetros
 
-### `veeam_list_backup_jobs`
+### `veeam_search_backup_jobs`
 
 **Novo Parâmetro:**
 ```
@@ -163,7 +163,7 @@ Examples:
   "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
-    "name": "veeam_list_backup_jobs",
+    "name": "veeam_search_backup_jobs",
     "arguments": {
       "limit": 100,
       "typeFilter": "Backup",
@@ -174,15 +174,9 @@ Examples:
 }
 ```
 
-### `veeam_list_backup_copy_jobs`
+### Backup copy jobs
 
-**Novo Parâmetro:**
-```
-descriptionFilter: string (opcional)
-Description: Filtra backup copy jobs por cliente
-```
-
-**Uso Idêntico a veeam_list_backup_jobs**
+Backup copy jobs foram **consolidados** em `veeam_search_backup_jobs` (não há tool separada). Use o mesmo `descriptionFilter`; copy jobs também aparecem na busca por nome de VM e na derivação a partir do histórico de sessões.
 
 ---
 
@@ -381,7 +375,7 @@ curl -X POST http://localhost:8825/mcp \
   -H "Authorization: Bearer TOKEN" \
   -d '{
     "method":"tools/call",
-    "params":{"name":"veeam_list_backup_jobs","arguments":{"descriptionFilter":"NOME_CLIENTE"}}
+    "params":{"name":"veeam_search_backup_jobs","arguments":{"descriptionFilter":"NOME_CLIENTE"}}
   }'
 ```
 
@@ -398,8 +392,8 @@ curl -X POST http://localhost:8825/mcp \
 - 📧 Email com detalhe do erro
 
 ### Documentação Completa
-- 📖 QUALITY_VERIFICATION_REPORT_DESCRIPTION_FEATURES.md
-- 📖 DESCRIPTION_FEATURES_SUMMARY.md
+- 📖 [README.md](../README.md) — visão geral e as 12 ferramentas
+- 📖 [DOCS_INDEX.md](../DOCS_INDEX.md) — índice da documentação
 
 ---
 

@@ -368,7 +368,7 @@ HTTP_PORT=8825
 NODE_ENV=production
 
 # MCP HTTP Streamable Authentication
-AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+AUTH_TOKEN=SEU_TOKEN_AQUI
 ```
 
 ### Boas Práticas de Segurança
@@ -456,10 +456,10 @@ O Veeam MCP v2.0.0 consolidou as 17 ferramentas originais em 12 ferramentas otim
 
 | Tool | Descrição | Parâmetros Principais |
 |---|---|---|
-| `veeam_search_backup_jobs` | Jobs de backup (VMs, replicação, cópia) | typeFilter, stateFilter, nameFilter, limit |
-| `veeam_search_backup_sessions` | Sessions/histórico de execuções | statusFilter (Running/Failed/Success), scope, hours |
-| `veeam_search_restore_points` | Pontos de restauração de VMs | vmName ou vmId |
-| `veeam_search_infrastructure` | Proxies e repositórios de backup | type (proxies/repositories) |
+| `veeam_search_backup_jobs` | Jobs de backup, cópia e jobs derivados de sessões (Agent/replica/site remoto) | `nameFilter` (job OU nome de VM), `descriptionFilter`, `typeFilter`, `stateFilter` |
+| `veeam_search_backup_sessions` | Sessions/histórico de execuções | `statusFilter`, `scope`, `hours`, `from`/`to`, **`groupByJob`** (1 linha por job) |
+| `veeam_search_restore_points` | Pontos de restauração de VMs (com span de retenção) | `vmName` ou `vmId`, `from`/`to` |
+| `veeam_search_infrastructure` | Proxies e repositórios (status CRÍTICO/ATENÇÃO/OFFLINE) | `type` (proxies/repositories), `threshold` |
 
 ### Ferramentas de Gerenciamento (manage_*) — Leitura + Escrita
 
@@ -490,6 +490,15 @@ O Veeam MCP v2.0.0 consolidou as 17 ferramentas originais em 12 ferramentas otim
 |---|---|
 | `veeam://server-info` | Informações do servidor VBR |
 | `veeam://license` | Dados de licenciamento e workloads |
+
+### Recursos Avançados (alinhados ao código atual)
+
+- **`groupByJob=true`** em `search_backup_sessions`: agrega as N tentativas de cada job em **uma linha** (último resultado, tentativas, falhas), com jobs falhando no topo — a visão de saúde do ambiente.
+- **Cobertura híbrida**: `search_backup_jobs` encontra jobs fora do inventário `/jobs` (Veeam Agent, replica, backup copy, site remoto) derivando-os do histórico de sessões. Busca também por **nome de VM** dentro do job.
+- **Datas flexíveis** (`from`/`to`): aceitam ISO (`2026-05-28`), BR (`28/05/2026 05:30`) e natural (`ontem`, `últimas 6 horas`, `7 dias`).
+- **Resolução nome→UUID**: `manage_backup_jobs` aceita o nome (parcial) do job; se casar vários, retorna os candidatos. `start`/`stop` exigem nome exato e único.
+- **`get_log` com resultado por VM**: em jobs multi-VM, detalha quais VMs falharam e a causa de cada uma (aba *Statistics* do console), agrupando VMs com o mesmo erro.
+- **Span de retenção**: `search_restore_points` mostra o primeiro e o último ponto da VM, e retorna candidatos quando o nome casa várias VMs distintas.
 
 ### Exemplos de Uso
 
@@ -549,7 +558,7 @@ Benefícios do Markdown vs JSON bruto:
 
 | Parâmetro | Default | Máximo |
 |---|---|---|
-| `limit` | 25 | 50 |
+| `limit` | 35 | 50 |
 | `skip` | 0 | — |
 
 Limites otimizados para evitar token explosion. Use `skip` para navegar páginas.
@@ -595,1001 +604,46 @@ Os prompts estão organizados em **duas categorias** para diferentes perfis de u
 
 ### 🎯 Prompts para Gestores (7)
 
-Prompts focados em **visão estratégica**, **compliance** e **relatórios executivos**.
-
-#### 1. `veeam_backup_health_report` - Relatório de Saúde Geral do Ambiente
-
-**Descrição:** Dashboard completo de saúde da infraestrutura de backup com análise de jobs, restore points, repositórios e SLA.
-
-**Quando Usar:**
-- Reuniões de status semanal/mensal
-- Relatórios executivos
-- Validação de conformidade
-- Planejamento de capacidade
-
-**Argumentos:**
-- `client_filter` (opcional): Filtrar por nome do cliente MSP
-- `period_days` (opcional): Janela temporal (padrão: 7 dias)
-- `format` (opcional): `compact` (WhatsApp) ou `detailed` (padrão)
-
-**O Que Este Prompt Faz:**
-1. Lista todos os backup jobs e calcula taxa de sucesso geral
-2. Identifica VMs críticas sem restore points recentes (>24h)
-3. Verifica espaço disponível em repositórios (<20% = alerta)
-4. Analisa compliance 3-2-1 via backup copy jobs
-5. Calcula RPO médio e identifica VMs fora do SLA
-6. Detecta jobs com falhas recorrentes (>3 falhas/semana)
-7. Lista licenças próximas de vencimento (<30 dias)
-
-**Exemplo de Uso:**
-```
-Claude, use o prompt veeam_backup_health_report para análise completa do ambiente
-```
-
-**Output Esperado:**
-```
-📊 RELATÓRIO DE SAÚDE - VEEAM BACKUP
-Período: Últimos 7 dias
-
-✅ STATUS DOS JOBS:
-• Total de jobs: 25
-• Taxa de sucesso: 92% (23 ok, 2 com warnings)
-• Jobs falhando: Exchange-Backup (erro de rede)
-
-⚠️ RESTORE POINTS CRÍTICOS:
-• SQL-PROD-01: Último backup há 36h (SLA: 24h)
-• FILE-SERVER-02: Sem restore points há 48h
-
-💾 CAPACIDADE:
-• Repositório PROD: 15% livre (1.5 TB) - OK
-• Repositório ARCHIVE: 8% livre (400 GB) - ⚠️ CRÍTICO
-
-🔄 COMPLIANCE 3-2-1:
-• 18 de 25 jobs com backup copy configurado (72%)
-• 7 jobs SEM replicação offsite
-```
-
----
-
-#### 2. `veeam_failed_jobs_analysis` - Análise de Jobs com Falha
-
-**Descrição:** Investigação profunda de jobs que falharam, agrupando por tipo de erro e fornecendo recomendações.
-
-**Quando Usar:**
-- Troubleshooting matinal (revisar falhas da noite)
-- Análise de tendências de falha
-- Priorização de correções
-- Relatórios de incidentes
-
-**Argumentos:**
-- `hours` (opcional): Janela temporal (padrão: 24h, máx: 168h)
-- `group_by_error` (opcional): Agrupar por tipo de erro (padrão: true)
-- `format` (opcional): `compact` ou `detailed`
-
-**O Que Este Prompt Faz:**
-1. Busca todas as sessões com falha nas últimas X horas
-2. Agrupa falhas por tipo de erro (rede, disco, timeout, etc.)
-3. Identifica jobs com falhas recorrentes
-4. Extrai VMs específicas que falharam em cada job
-5. Analisa logs de erro para diagnóstico
-6. Fornece recomendações de correção por tipo de erro
-7. Calcula impacto no RPO
-
-**Exemplo de Uso:**
-```
-Claude, analise jobs que falharam nas últimas 48 horas usando veeam_failed_jobs_analysis
-```
-
-**Output Esperado:**
-```
-🔍 ANÁLISE DE FALHAS - ÚLTIMAS 48H
-
-📊 RESUMO:
-• Total de falhas: 5 jobs
-• VMs afetadas: 12
-• Impacto no RPO: 3 VMs fora do SLA
-
-🚨 FALHAS POR TIPO:
-
-1️⃣ TIMEOUT DE REDE (3 ocorrências):
-   Jobs: SQL-Backup, Exchange-Backup, FileServer-Daily
-   VMs afetadas: SQL-PROD-01, EXCHANGE-01, FILE-01
-   Recomendação: Verificar latência de rede para storage
-
-2️⃣ DISCO CHEIO (2 ocorrências):
-   Jobs: VM-Production, Archive-Weekly
-   Repositório: REPO-PROD (5% livre)
-   Recomendação: Expandir repositório ou ajustar retenção
-```
-
----
-
-#### 3. `veeam_capacity_planning` - Planejamento de Capacidade
-
-**Descrição:** Projeção de crescimento de storage e previsão de quando será necessário expandir repositórios.
-
-**Quando Usar:**
-- Planejamento trimestral de orçamento
-- Análise de crescimento de dados
-- Justificativa de investimento em storage
-- Prevenção de falhas por disco cheio
-
-**Argumentos:**
-- `analysis_period_days` (opcional): Período de análise histórica (padrão: 30)
-- `projection_days` (opcional): Quantos dias projetar no futuro (padrão: 90)
-- `alert_threshold_percent` (opcional): % de uso para alerta (padrão: 80)
-
-**O Que Este Prompt Faz:**
-1. Analisa crescimento de dados nos últimos X dias
-2. Calcula taxa de crescimento diária média
-3. Projeta uso futuro dos repositórios
-4. Identifica data estimada de esgotamento
-5. Calcula custo de expansão baseado em crescimento
-6. Fornece recomendações de otimização de retenção
-7. Sugere repositórios candidatos para arquivamento
-
-**Exemplo de Uso:**
-```
-Claude, faça projeção de capacidade para os próximos 3 meses usando veeam_capacity_planning
-```
-
-**Output Esperado:**
-```
-📈 PLANEJAMENTO DE CAPACIDADE - 90 DIAS
-
-📊 ANÁLISE HISTÓRICA (últimos 30 dias):
-• Crescimento médio: 150 GB/dia
-• Taxa de crescimento: +4.2% ao mês
-
-🔮 PROJEÇÃO:
-
-REPOSITÓRIO PROD (10 TB total):
-• Uso atual: 7.5 TB (75%)
-• Projeção em 30 dias: 8.0 TB (80%) ⚠️
-• Projeção em 60 dias: 8.5 TB (85%) 🚨
-• Projeção em 90 dias: 9.0 TB (90%) ⛔
-• Esgotamento estimado: ~110 dias
-
-RECOMENDAÇÕES:
-✅ Adicionar 5 TB ao REPO-PROD em até 60 dias
-✅ Revisar retenção de jobs antigos (>180 dias)
-✅ Considerar compressão adicional
-```
-
----
-
-#### 4. `veeam_compliance_report` - Relatório de Compliance
-
-**Descrição:** Auditoria de conformidade com políticas de backup (3-2-1, retenção, SLA).
-
-**Quando Usar:**
-- Auditorias SOX/HIPAA/ISO 27001
-- Validação de políticas corporativas
-- Relatórios de compliance trimestral
-- Due diligence em aquisições
-
-**Argumentos:**
-- `compliance_standard` (opcional): `3-2-1`, `sox`, `hipaa`, `gdpr` (padrão: `3-2-1`)
-- `include_evidence` (opcional): Incluir evidências de compliance (padrão: true)
-
-**O Que Este Prompt Faz:**
-1. Valida regra 3-2-1 (3 cópias, 2 mídias, 1 offsite)
-2. Verifica políticas de retenção vs. requisitos regulatórios
-3. Identifica VMs críticas sem backup adequado
-4. Valida SLA de RPO/RTO
-5. Verifica encryption at rest e in transit
-6. Analisa logs de acesso e modificações
-7. Gera relatório de conformidade com evidências
-
-**Exemplo de Uso:**
-```
-Claude, gere relatório de compliance 3-2-1 usando veeam_compliance_report
-```
-
-**Output Esperado:**
-```
-📋 RELATÓRIO DE COMPLIANCE - REGRA 3-2-1
-
-✅ CONFORMIDADE GERAL: 72% (18 de 25 jobs)
-
-DETALHES POR REQUISITO:
-
-1️⃣ 3 CÓPIAS DE DADOS:
-   ✅ Conformes: 23 jobs (backup primary + incremental)
-   ⚠️ Não conformes: 2 jobs (apenas 1 cópia)
-
-2️⃣ 2 TIPOS DE MÍDIA:
-   ✅ Conformes: 20 jobs (disco + tape/cloud)
-   ⚠️ Não conformes: 5 jobs (apenas disco)
-
-3️⃣ 1 CÓPIA OFFSITE:
-   ✅ Conformes: 18 jobs (backup copy configurado)
-   🚨 CRÍTICO: 7 jobs SEM backup copy
-      • SQL-Daily, Exchange-Weekly, FileServer-Production
-      • VM-Archive, Domain-Controllers, SharePoint-Backup
-      • Critical-Apps-Backup
-
-RECOMENDAÇÕES:
-🔧 Configurar backup copy jobs para os 7 não conformes
-🔧 Validar funcionamento de jobs de tape/cloud
-🔧 Implementar immutability para proteção ransomware
-```
-
----
-
-#### 5. `veeam_sla_dashboard` - Dashboard de SLA
-
-**Descrição:** Métricas de SLA (RPO/RTO) com identificação de VMs fora do objetivo.
-
-**Quando Usar:**
-- Reuniões de revisão de SLA
-- Relatórios de disponibilidade mensal
-- Validação de contratos com clientes MSP
-- Análise de performance operacional
-
-**Argumentos:**
-- `client_filter` (opcional): Filtrar por cliente MSP
-- `sla_rpo_hours` (opcional): RPO objetivo em horas (padrão: 24)
-- `period_days` (opcional): Período de análise (padrão: 30)
-
-**O Que Este Prompt Faz:**
-1. Calcula RPO real de cada VM (tempo desde último backup)
-2. Compara com SLA definido
-3. Identifica VMs fora do SLA
-4. Calcula percentual de conformidade
-5. Analisa tendências de degradação
-6. Identifica jobs com execuções falhando
-7. Fornece métricas de uptime de backup
-
-**Exemplo de Uso:**
-```
-Claude, mostre dashboard de SLA dos últimos 30 dias usando veeam_sla_dashboard
-```
-
-**Output Esperado:**
-```
-📊 DASHBOARD SLA - ÚLTIMOS 30 DIAS
-SLA Objetivo: RPO 24h
-
-✅ CONFORMIDADE GERAL: 94% (47 de 50 VMs)
-
-📈 MÉTRICAS:
-• VMs dentro do SLA: 47 (94%)
-• VMs fora do SLA: 3 (6%)
-• RPO médio: 18h
-• Disponibilidade de backup: 99.2%
-
-🚨 VMs FORA DO SLA:
-
-1. SQL-PROD-01
-   RPO atual: 36h (12h acima do SLA)
-   Último backup: 2024-12-09 03:00
-   Causa: Job SQL-Backup falhando há 2 dias
-
-2. EXCHANGE-01
-   RPO atual: 28h (4h acima do SLA)
-   Último backup: 2024-12-09 07:00
-   Causa: Job em manutenção
-
-3. FILE-CRITICAL-02
-   RPO atual: 48h (24h acima do SLA)
-   Último backup: 2024-12-08 03:00
-   Causa: VM removida do job por engano
-```
-
----
-
-#### 6. `veeam_cost_analysis` - Análise de Custos de Backup
-
-**Descrição:** Análise de custos por cliente, job ou repositório com otimização de investimento.
-
-**Quando Usar:**
-- Planejamento orçamentário
-- Análise de custo por cliente MSP
-- Otimização de storage
-- Justificativa de investimentos
-
-**Argumentos:**
-- `cost_per_tb_month` (opcional): Custo mensal por TB (padrão: 50 USD)
-- `group_by` (opcional): `client`, `job`, `repository` (padrão: `client`)
-- `include_licensing` (opcional): Incluir custos de licença (padrão: true)
-
-**O Que Este Prompt Faz:**
-1. Calcula consumo de storage por cliente/job
-2. Multiplica por custo por TB
-3. Adiciona custos de licenciamento proporcional
-4. Identifica clientes/jobs mais caros
-5. Calcula ROI de otimizações (deduplicação, compressão)
-6. Fornece recomendações de redução de custos
-7. Projeta custos futuros baseado em crescimento
-
-**Exemplo de Uso:**
-```
-Claude, analise custos de backup por cliente usando veeam_cost_analysis com custo de $40/TB
-```
-
-**Output Esperado:**
-```
-💰 ANÁLISE DE CUSTOS - POR CLIENTE
-
-CUSTO TOTAL MENSAL: $3,200
-(Storage: $2,800 + Licenças: $400)
-
-📊 TOP 5 CLIENTES MAIS CAROS:
-
-1. Cliente ACME Corp
-   Storage: 25 TB
-   Custo: $1,000/mês ($40/TB)
-   Licenças: 50 VMs × $2 = $100/mês
-   TOTAL: $1,100/mês (34% do total)
-
-2. Cliente Global Industries
-   Storage: 18 TB
-   Custo: $720/mês
-   Licenças: 35 VMs × $2 = $70/mês
-   TOTAL: $790/mês (25% do total)
-
-💡 OPORTUNIDADES DE OTIMIZAÇÃO:
-
-✅ Deduplicação adicional: -15% storage (~$420/mês)
-✅ Arquivamento de backups antigos: -$200/mês
-✅ Ajuste de retenção: -$150/mês
-
-ECONOMIA POTENCIAL: $770/mês (24%)
-```
-
----
-
-#### 7. `veeam_backup_optimization` - Recomendações de Otimização
-
-**Descrição:** Análise de performance e recomendações de otimização de recursos.
-
-**Quando Usar:**
-- Troubleshooting de lentidão
-- Planejamento de otimização
-- Análise de janelas de backup
-- Tuning de performance
-
-**Argumentos:**
-- `analysis_period_days` (opcional): Período de análise (padrão: 7)
-- `focus_area` (opcional): `performance`, `storage`, `network`, `all` (padrão: `all`)
-
-**O Que Este Prompt Faz:**
-1. Analisa duração de jobs vs. janela de backup
-2. Identifica jobs com throughput baixo (<100 MB/s)
-3. Verifica utilização de proxies (identificar gargalos)
-4. Analisa compression ratio e deduplication
-5. Identifica jobs com muitos incrementais (recomendar full)
-6. Verifica configurações de parallel processing
-7. Fornece checklist de otimização priorizado
-
-**Exemplo de Uso:**
-```
-Claude, analise performance e sugira otimizações usando veeam_backup_optimization
-```
-
-**Output Esperado:**
-```
-⚡ ANÁLISE DE OTIMIZAÇÃO - PERFORMANCE
-
-🔍 GARGALOS IDENTIFICADOS:
-
-1️⃣ JOBS LENTOS (throughput <100 MB/s):
-   • SQL-Backup: 45 MB/s (esperado: 200+ MB/s)
-     Recomendação: Aumentar parallel tasks de 2 para 4
-
-   • Exchange-Weekly: 60 MB/s
-     Recomendação: Adicionar proxy dedicado
-
-2️⃣ PROXIES SOBRECARREGADOS:
-   • PROXY-01: 95% utilização (8/8 tasks)
-     Recomendação: Adicionar proxy ou redistribuir jobs
-
-3️⃣ COMPRESSION BAIXA:
-   • Job VM-Production: ratio 1.2x (esperado: 2x+)
-     Recomendação: Ajustar compression level para "Optimal"
-
-4️⃣ DEDUPLICATION:
-   • Repositório PROD: 30% dedupe (potencial: 50%)
-     Recomendação: Habilitar storage-level deduplication
-
-💡 CHECKLIST DE OTIMIZAÇÃO:
-✅ [ALTO IMPACTO] Adicionar 2º proxy (+40% throughput)
-✅ [MÉDIO IMPACTO] Ajustar compression settings (+15% storage)
-✅ [BAIXO IMPACTO] Redistribuir agendamentos
-```
-
----
-
-### 🔧 Prompts para Analistas (8)
-
-Prompts focados em **operações práticas**, **troubleshooting** e **execução técnica**.
-
-#### 1. `veeam_quick_restore_guide` - Guia Rápido de Restore de VM
-
-**Descrição:** Workflow passo-a-passo para restaurar uma VM específica.
-
-**Quando Usar:**
-- Restore de VM em situação de emergência
-- Treinamento de novos técnicos
-- Validação de restore points antes de restore
-- Teste de DR (Disaster Recovery)
-
-**Argumentos:**
-- `vm_name` (obrigatório): Nome da VM a restaurar (busca semântica)
-- `restore_type` (opcional): `full_vm`, `files`, `application_items` (padrão: `full_vm`)
-- `target_location` (opcional): `original`, `alternate` (padrão: `original`)
-
-**O Que Este Prompt Faz:**
-1. Busca restore points disponíveis para a VM (com busca semântica multi-palavra)
-2. Valida se restore points estão íntegros
-3. Mostra informações de cada restore point (data, tipo, tamanho)
-4. Fornece passo-a-passo de restore via Veeam Console
-5. Lista pré-requisitos (espaço em disco, recursos de vSphere)
-6. Alerta sobre impactos (downtime, IP duplicado, etc.)
-7. Fornece checklist pós-restore
-
-**Exemplo de Uso:**
-```
-Claude, preciso restaurar a VM SQL-SERVER-01 usando veeam_quick_restore_guide
-```
-
-**Output Esperado:**
-```
-🔄 GUIA DE RESTORE - SQL-SERVER-01
-
-📦 RESTORE POINTS DISPONÍVEIS:
-
-1. 2024-12-09 23:00 (Full Backup) - 250 GB
-   Tipo: Application-consistent
-   Repositório: REPO-PROD
-   Status: ✅ Íntegro
-
-2. 2024-12-09 03:00 (Incremental) - 45 GB
-   Tipo: Crash-consistent
-   Repositório: REPO-PROD
-   Status: ✅ Íntegro
-
-📋 PASSO-A-PASSO RESTORE:
-
-PREPARAÇÃO:
-✅ Confirmar espaço no datastore (250 GB necessários)
-✅ Verificar licenças vSphere disponíveis
-✅ Desligar VM original (se existir)
-
-EXECUÇÃO:
-1. Abrir Veeam Console
-2. Home > Backups > Disk
-3. Localizar "SQL-SERVER-01"
-4. Botão direito > Restore entire VM
-5. Selecionar restore point: 2024-12-09 23:00
-6. Restore mode: Original location
-7. Power on after restore: No (validar antes)
-8. Click "Finish"
-
-VALIDAÇÃO PÓS-RESTORE:
-✅ Verificar VM iniciou corretamente
-✅ Testar conectividade de rede
-✅ Validar serviços SQL Server
-✅ Conferir data/hora do sistema
-✅ Remover snapshot criado pelo restore
-
-⏱️ TEMPO ESTIMADO: 15-20 minutos
-```
-
----
-
-#### 2. `veeam_job_troubleshooting` - Troubleshooting de Job com Falha
-
-**Descrição:** Diagnóstico sistemático de jobs com falha incluindo análise de logs.
-
-**Quando Usar:**
-- Job falhando repetidamente
-- Investigação de erros específicos
-- Validação pós-manutenção
-- Suporte técnico
-
-**Argumentos:**
-- `job_name` (opcional): Nome do job para troubleshoot (busca semântica)
-- `session_id` (opcional): ID de sessão específica
-- `auto_fix` (opcional): Sugerir correções automáticas (padrão: true)
-
-**O Que Este Prompt Faz:**
-1. Busca últimas sessões do job (especialmente com falha)
-2. Extrai logs detalhados de erros
-3. Identifica VMs específicas que falharam
-4. Classifica tipo de erro (rede, disco, permissions, etc.)
-5. Busca em knowledge base Veeam soluções conhecidas
-6. Fornece checklist de troubleshooting por tipo de erro
-7. Sugere correções e next steps
-
-**Exemplo de Uso:**
-```
-Claude, troubleshoot o job SQL-Backup que está falhando usando veeam_job_troubleshooting
-```
-
-**Output Esperado:**
-```
-🔍 TROUBLESHOOTING - SQL-Backup
-
-📊 STATUS DO JOB:
-• Última execução: Failed (2024-12-09 03:30)
-• Tentativas: 3 (todas falharam)
-• VMs afetadas: SQL-PROD-01
-
-🚨 ERRO IDENTIFICADO:
-Tipo: Network Timeout
-Código: VSS Writer timeout (0x800423F4)
-Mensagem: "Failed to create VSS snapshot. Timeout waiting for VSS Writers"
-
-🔧 DIAGNÓSTICO:
-
-CAUSA PROVÁVEL:
-VSS Writers do SQL Server não estão respondendo em tempo hábil
-
-CHECKLIST DE VALIDAÇÃO:
-✅ Verificar VSS Writers no SQL Server:
-   CMD> vssadmin list writers
-
-✅ Reiniciar serviço VSS:
-   CMD> net stop vss
-   CMD> net start vss
-
-✅ Verificar espaço em disco System Volume (mínimo 5 GB)
-
-✅ Aumentar timeout VSS no Veeam:
-   Registry: HKLM\SOFTWARE\Veeam\Veeam Backup and Replication
-   Key: VssSnapshotTimeout
-   Value: 1800 (30 min)
-
-📋 NEXT STEPS:
-1. Executar checklist de validação
-2. Tentar backup manual (veeam_manage_backup_jobs action=start)
-3. Se persistir, validar SQL Server VSS Writers com DBA
-```
-
----
-
-#### 3. `veeam_vm_backup_status` - Status de Backup de VM Específica
-
-**Descrição:** Consulta rápida do status de backup de uma VM individual.
-
-**Quando Usar:**
-- Validação rápida antes de manutenção
-- Confirmar backup recente
-- Verificar cobertura de nova VM
-- Atender chamado de usuário
-
-**Argumentos:**
-- `vm_name` (obrigatório): Nome da VM (busca semântica multi-palavra)
-- `show_history` (opcional): Mostrar histórico de backups (padrão: true)
-
-**O Que Este Prompt Faz:**
-1. Busca VM usando busca semântica multi-palavra e normalização de acentos
-2. Identifica job(s) que fazem backup da VM
-3. Mostra status do último backup
-4. Lista restore points disponíveis
-5. Calcula RPO atual
-6. Verifica agendamento do próximo backup
-7. Alerta se VM não está em nenhum job
-
-**Exemplo de Uso:**
-```
-Claude, qual o status de backup da VM FILE-SERVER-01 usando veeam_vm_backup_status?
-```
-
-ou com **busca semântica multi-palavra**:
-```
-Claude, status de backup da "SK VCENTER" usando veeam_vm_backup_status
-```
-
-**Output Esperado:**
-```
-📊 STATUS DE BACKUP - FILE-SERVER-01
-
-✅ VM PROTEGIDA
-
-JOB: FileServer-Daily-Backup
-Status: Enabled
-Último backup: 2024-12-09 23:00 ✅ Sucesso
-RPO atual: 9h (dentro do SLA de 24h)
-
-📦 RESTORE POINTS DISPONÍVEIS: 7
-• 2024-12-09 23:00 (Full) - 180 GB
-• 2024-12-08 23:00 (Incremental) - 25 GB
-• 2024-12-07 23:00 (Incremental) - 30 GB
-• ... (mais 4 pontos)
-
-⏭️ PRÓXIMO BACKUP: Hoje 23:00 (em 14 horas)
-
-🔄 RETENÇÃO: 7 dias (7 restore points)
-
-✅ VM ESTÁ ADEQUADAMENTE PROTEGIDA
-```
-
----
-
-#### 4. `veeam_restore_point_lookup` - Busca de Restore Points
-
-**Descrição:** Busca avançada de restore points com filtros por data, tipo e VM.
-
-**Quando Usar:**
-- Buscar backup de data específica
-- Validar restore points antes de limpeza
-- Auditoria de retenção
-- Planejamento de restore
-
-**Argumentos:**
-- `vm_name` (opcional): Nome da VM (busca semântica)
-- `date_from` (opcional): Data inicial (YYYY-MM-DD)
-- `date_to` (opcional): Data final (YYYY-MM-DD)
-- `type_filter` (opcional): `full`, `incremental`, `differential`
-
-**O Que Este Prompt Faz:**
-1. Busca restore points com filtros especificados
-2. Agrupa por VM
-3. Mostra informações detalhadas (data, tipo, tamanho, repositório)
-4. Valida integridade dos restore points
-5. Calcula espaço total ocupado
-6. Identifica restore points órfãos
-7. Fornece comandos para restore via PowerShell
-
-**Exemplo de Uso:**
-```
-Claude, busque restore points da VM SQL-PROD entre 2024-12-01 e 2024-12-07 usando veeam_restore_point_lookup
-```
-
-**Output Esperado:**
-```
-🔍 RESTORE POINTS - SQL-PROD-01
-Período: 2024-12-01 a 2024-12-07
-
-📦 7 RESTORE POINTS ENCONTRADOS:
-
-1. 2024-12-07 23:00
-   Tipo: Full Backup (250 GB)
-   Repositório: REPO-PROD
-   Status: ✅ Íntegro
-
-2. 2024-12-06 23:00
-   Tipo: Incremental (45 GB)
-   Repositório: REPO-PROD
-   Status: ✅ Íntegro
-
-[... outros pontos ...]
-
-💾 ESPAÇO TOTAL: 520 GB
-
-🔧 COMANDO POWERSHELL PARA RESTORE:
-Get-VBRRestorePoint -Name "SQL-PROD-01" | Where-Object {$_.CreationTime -eq "2024-12-07 23:00"} | Start-VBRRestoreVM -Server "vcenter.domain.local"
-```
-
----
-
-#### 5. `veeam_repository_health` - Verificação de Saúde de Repositório
-
-**Descrição:** Diagnóstico completo de saúde de repositório específico.
-
-**Quando Usar:**
-- Troubleshooting de lentidão em backups
-- Validação pós-manutenção
-- Planejamento de expansão
-- Alertas de espaço em disco
-
-**Argumentos:**
-- `repository_name` (opcional): Nome do repositório
-- `check_integrity` (opcional): Executar check de integridade (padrão: false)
-
-**O Que Este Prompt Faz:**
-1. Lista todos os repositórios ou foca em um específico
-2. Verifica espaço disponível e tendência de uso
-3. Analisa I/O performance (latência, throughput)
-4. Identifica jobs que usam o repositório
-5. Calcula taxa de deduplicação e compression
-6. Verifica configurações de immutability
-7. Fornece recomendações de otimização
-
-**Exemplo de Uso:**
-```
-Claude, verifique saúde do repositório REPO-PROD usando veeam_repository_health
-```
-
-**Output Esperado:**
-```
-💾 SAÚDE DO REPOSITÓRIO - REPO-PROD
-
-📊 CAPACIDADE:
-• Total: 10 TB
-• Usado: 7.5 TB (75%)
-• Livre: 2.5 TB (25%)
-• Taxa de crescimento: +150 GB/dia
-
-📈 PERFORMANCE:
-• Latência média de escrita: 15ms ✅
-• Throughput: 850 MB/s ✅
-• Operações IOPS: 12,000 ✅
-
-🔧 OTIMIZAÇÃO:
-• Compression ratio: 2.1x (Bom)
-• Deduplication: 35% (Pode melhorar)
-• Immutability: ✅ Habilitado (14 dias)
-
-📦 JOBS USANDO ESTE REPO:
-• SQL-Backup-Daily
-• VM-Production
-• Exchange-Weekly
-• FileServer-Daily
-[... 5 outros jobs]
-
-⚠️ ALERTAS:
-• Espaço livre abaixo de 30% (considerar expansão)
-• Projeção de esgotamento: ~16 dias
-
-💡 RECOMENDAÇÕES:
-✅ Expandir repositório em 5 TB nas próximas 2 semanas
-✅ Revisar retenção de jobs antigos
-✅ Habilitar storage-level deduplication
-```
-
----
-
-#### 6. `veeam_tape_management` - Gerenciamento de Tape Backup
-
-**Descrição:** Operações e monitoramento de backup em tape/library.
-
-**Quando Usar:**
-- Validar backups em fita
-- Troubleshooting de tape library
-- Planejamento de rotação de mídias
-- Auditoria de mídias offsite
-
-**Argumentos:**
-- `operation` (opcional): `status`, `inventory`, `verify`, `eject` (padrão: `status`)
-- `library_name` (opcional): Nome da library
-
-**O Que Este Prompt Faz:**
-1. Lista tape libraries e status
-2. Mostra tapes disponíveis e em uso
-3. Verifica jobs de tape backup
-4. Identifica tapes com erros
-5. Calcula espaço disponível em tapes
-6. Fornece procedimentos de manutenção
-7. Gera relatório de mídias para rotação
-
-**Exemplo de Uso:**
-```
-Claude, status das tape libraries usando veeam_tape_management
-```
-
-**Output Esperado:**
-```
-📼 GERENCIAMENTO DE TAPE
-
-🏢 LIBRARIES DISPONÍVEIS:
-
-1. HP MSL6048 Library
-   Status: Online ✅
-   Tapes carregadas: 48/48
-   Slots livres: 0
-
-📦 TAPES ATIVAS:
-
-Full Tapes (prontas para ejeção): 12
-• TAPE-001: Backup 2024-12-01 (Full)
-• TAPE-002: Backup 2024-12-02 (Full)
-[... outras tapes]
-
-Tapes em uso: 4
-• TAPE-048: Gravando (SQL-Copy-Job) - 85% completa
-
-⚠️ ALERTAS:
-• 3 tapes com erros de leitura (TAPE-015, TAPE-022, TAPE-031)
-• Nenhum slot livre para novos jobs
-
-📋 AÇÕES RECOMENDADAS:
-✅ Ejetar 12 tapes full e substituir por vazias
-✅ Validar integridade de tapes com erros
-✅ Agendar limpeza de drives
-```
-
----
-
-#### 7. `veeam_replication_monitor` - Monitoramento de Replicação
-
-**Descrição:** Monitoramento de jobs de replicação e DR readiness.
-
-**Quando Usar:**
-- Validação de DR (Disaster Recovery)
-- Troubleshooting de replicação
-- Teste de failover
-- Auditoria de RTO
-
-**Argumentos:**
-- `replica_job_name` (opcional): Nome do job de replicação
-- `show_failover_plan` (opcional): Mostrar plano de failover (padrão: true)
-
-**O Que Este Prompt Faz:**
-1. Lista todos os replica jobs
-2. Verifica status de cada réplica
-3. Calcula lag de replicação (RPO real)
-4. Identifica réplicas desatualizadas
-5. Valida DR readiness (réplicas prontas para failover)
-6. Fornece procedimento de failover
-7. Calcula RTO estimado
-
-**Exemplo de Uso:**
-```
-Claude, monitore status de replicação usando veeam_replication_monitor
-```
-
-**Output Esperado:**
-```
-🔄 MONITORAMENTO DE REPLICAÇÃO
-
-📊 RESUMO:
-• Total de replicas: 15 VMs
-• Réplicas atualizadas: 14 ✅
-• Réplicas com lag: 1 ⚠️
-
-🔄 STATUS POR JOB:
-
-1. Critical-VMs-Replica
-   VMs: 5 (SQL-PROD, Exchange, DC01, DC02, FileServer)
-   Última replicação: 2024-12-09 22:00 ✅
-   RPO atual: 2h ✅ (SLA: 4h)
-   DR Ready: ✅ Sim
-
-2. Secondary-Apps-Replica
-   VMs: 10
-   Última replicação: 2024-12-09 18:00 ⚠️
-   RPO atual: 6h ⚠️ (SLA: 4h)
-   DR Ready: ⚠️ Parcial (1 VM com lag)
-
-⏱️ RTO ESTIMADO: 15 minutos (failover automático)
-
-📋 PROCEDIMENTO DE FAILOVER:
-1. Validar réplicas estão atualizadas
-2. Veeam Console > Replicas > Failover Now
-3. Selecionar réplicas a failover
-4. Validar conectividade de rede após failover
-5. Executar testes de aplicação
-```
-
----
-
-#### 8. `veeam_backup_window_planner` - Planejamento de Janela de Manutenção
-
-**Descrição:** Análise de janelas de backup e planejamento de manutenções.
-
-**Quando Usar:**
-- Planejar manutenção de servidores
-- Otimizar horários de backup
-- Evitar conflitos de agendamento
-- Validar janelas de backup
-
-**Argumentos:**
-- `maintenance_date` (opcional): Data da manutenção (YYYY-MM-DD)
-- `maintenance_time` (opcional): Hora da manutenção (HH:MM)
-- `duration_hours` (opcional): Duração estimada (padrão: 2)
-
-**O Que Este Prompt Faz:**
-1. Analisa jobs agendados para data/hora específica
-2. Identifica conflitos com janela de manutenção
-3. Calcula impacto no RPO se jobs forem suspensos
-4. Fornece recomendações de reprogramação
-5. Lista jobs que podem ser adiados
-6. Calcula janela ideal livre
-7. Fornece checklist pré e pós-manutenção
-
-**Exemplo de Uso:**
-```
-Claude, planeje manutenção para 2024-12-15 às 14:00 com duração de 3 horas usando veeam_backup_window_planner
-```
-
-**Output Esperado:**
-```
-📅 PLANEJAMENTO DE MANUTENÇÃO
-
-Data/Hora: 2024-12-15 14:00-17:00 (3 horas)
-
-⚠️ CONFLITOS IDENTIFICADOS:
-
-1. SQL-Backup-Hourly (Executa a cada hora)
-   Próximas execuções durante manutenção:
-   • 14:00, 15:00, 16:00
-   Impacto no RPO: +3h (aceitável, SLA: 24h)
-
-2. Exchange-Incremental (Agendado para 15:00)
-   Impacto no RPO: +24h (próximo backup amanhã 15:00)
-   ⚠️ CRÍTICO: Recomendado executar antes da manutenção
-
-💡 RECOMENDAÇÕES:
-
-ANTES DA MANUTENÇÃO (13:00):
-✅ Executar Exchange-Incremental manualmente
-✅ Pausar SQL-Backup-Hourly (Disable schedule)
-✅ Validar backups recentes de VMs críticas
-
-DURANTE MANUTENÇÃO (14:00-17:00):
-✅ Desligar servidores conforme planejado
-✅ Executar manutenção
-
-APÓS MANUTENÇÃO (17:00):
-✅ Reativar SQL-Backup-Hourly
-✅ Executar full backup de VMs afetadas
-✅ Validar restore points criados
-```
-
----
-
-### 📞 Como Usar os Prompts
-
-#### Claude Code
+Foco em visão estratégica, compliance e relatórios executivos (formato compacto, ideal para WhatsApp/Teams).
+
+| Prompt | Descrição | Argumentos |
+|--------|-----------|------------|
+| `veeam_backup_health_summary` | Resumo executivo de saúde dos backups com taxa de sucesso e alertas críticos | `period_days` (opcional, padrão 7) |
+| `veeam_storage_growth_forecast` | Previsão de crescimento de storage com projeção de capacidade | `forecast_months` (opcional, padrão 3) |
+| `veeam_backup_cost_analysis` | Análise de custo de backup por cliente com otimizações recomendadas | `client_name` (opcional) |
+| `veeam_recovery_sla_compliance` | Compliance de RTO/RPO e aderência aos SLAs de recuperação | `period_days` (opcional, padrão 30) |
+| `veeam_backup_success_rate` | Taxa de sucesso de backups por job com tendências e alertas | `period_days` (opcional, padrão 7) |
+| `veeam_repository_capacity` | Capacidade de repositórios com alertas de espaço e previsão de esgotamento | `threshold_percent` (opcional, padrão 80) |
+| `veeam_vm_protection_coverage` | Cobertura de proteção de VMs, identificando VMs não protegidas | `client_name` (opcional) |
+
+### 🔧 Prompts para Analistas Técnicos (8)
+
+Foco em troubleshooting, operações práticas e guias de restore.
+
+| Prompt | Descrição | Argumentos |
+|--------|-----------|------------|
+| `veeam_failed_job_investigation` | Investigação detalhada de job falhado com logs e troubleshooting | `job_id` (**obrigatório**) |
+| `veeam_restore_point_lookup` | Busca de restore points disponíveis para uma VM específica | `vm_name` (**obrigatório**) |
+| `veeam_restore_guide` | Guia passo-a-passo para restauração de VM/arquivo | `vm_name` (**obrigatório**), `restore_type` (opcional) |
+| `veeam_backup_validation` | Validação de integridade de backup com teste de restore | `vm_name` (**obrigatório**) |
+| `veeam_vm_backup_history` | Histórico completo de backups de uma VM com estatísticas de performance | `vm_name` (**obrigatório**), `period_days` (opcional) |
+| `veeam_repository_space_alert` | Alerta de espaço em repositório com análise de crescimento | `repository_name` (**obrigatório**) |
+| `veeam_job_status` | Status rápido de jobs de backup com última execução e próxima janela | `job_name` (opcional) |
+| `veeam_tape_job_status` | Status de jobs de fita com última gravação e mídia utilizada | `tape_job_name` (opcional) |
+
+> 💡 Cada prompt inclui uma linha **🛠️ Ferramentas** que indica quais tools acionar (ex.: `groupByJob=true` para saúde, busca por nome de VM, `get_log` por VM), guiando o assistente ao caminho mais eficiente.
+
+**Como descobrir e executar (via MCPHub):**
+
+- `veeam_list_mcp_prompts` — lista os 15 prompts com seus argumentos
+- `veeam_get_mcp_prompt` — executa um prompt pelo `name` (+ objeto `arguments`). Argumentos obrigatórios ausentes retornam um erro claro em pt-BR (ex.: falta `job_id`).
 
 ```bash
-# Listar prompts disponíveis
-/prompt list
-
-# Executar um prompt
-/prompt veeam_backup_health_report
-
-# Executar com argumentos
-/prompt veeam_failed_jobs_analysis hours=48 format=compact
-```
-
-#### Claude Desktop
-
-```
-Você: use prompt veeam_backup_health_report para análise completa do ambiente
-```
-
-#### Gemini CLI
-
-```bash
-# Listar prompts
-gemini prompt list
-
-# Executar prompt
-gemini prompt veeam_backup_health_report
-
-# Com argumentos
-gemini prompt veeam_failed_jobs_analysis --hours=48 --format=compact
-```
-
----
-
-### 🎯 Casos de Uso Práticos dos Prompts
-
-#### Rotina Matinal do Administrador
-
-```
-1. veeam_failed_jobs_analysis (revisar falhas da noite)
-2. veeam_backup_health_report (status geral)
-3. veeam_sla_dashboard (validar conformidade)
-```
-
-#### Planejamento Trimestral (Gestor)
-
-```
-1. veeam_capacity_planning (projeção de crescimento)
-2. veeam_cost_analysis (análise de custos)
-3. veeam_compliance_report (auditoria)
-```
-
-#### Troubleshooting de Emergência (Analista)
-
-```
-1. veeam_vm_backup_status (validar VM específica)
-2. veeam_job_troubleshooting (diagnosticar falha)
-3. veeam_quick_restore_guide (restaurar VM)
-```
-
-#### Preparação para Auditoria (Compliance)
-
-```
-1. veeam_compliance_report compliance_standard=sox
-2. veeam_sla_dashboard period_days=90
-3. veeam_backup_health_report include_evidence=true
+# Exemplo: investigar um job que falhou
+curl -X POST http://localhost:8825/mcp \
+  -H 'Authorization: Bearer TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"veeam_get_mcp_prompt","arguments":{"name":"veeam_failed_job_investigation","arguments":{"job_id":"BKP-JOB-LOCAL-..."}}},"id":1}'
 ```
 
 ---
@@ -1636,7 +690,7 @@ Adicione ao `.mcp.json` no workspace ou `~/.claude/settings.json`:
       "type": "streamable-http",
       "url": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       }
     }
   }
@@ -1667,7 +721,7 @@ Adicione ao `~/.gemini/settings.json`:
     "veeam-backup": {
       "httpUrl": "http://localhost:8825/mcp",
       "headers": {
-        "Authorization": "Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+        "Authorization": "Bearer SEU_TOKEN_AQUI"
       },
       "timeout": 30000
     }
@@ -1859,7 +913,7 @@ Para ambientes de produção:
 1. **Firewall:** Restrinja porta 8825 apenas a IPs confiáveis
    ```bash
    # Exemplo UFW (Linux)
-   ufw allow from 192.168.1.0/24 to any port 8825
+   ufw allow from 203.0.113.0/24 to any port 8825
    ```
 
 2. **Reverse Proxy:** Use Nginx/Apache com autenticação

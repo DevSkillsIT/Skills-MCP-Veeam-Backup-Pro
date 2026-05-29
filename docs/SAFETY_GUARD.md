@@ -45,19 +45,21 @@ Similar a um "sudo" para operações de backup:
 
 O Safety Guard protege **2 operações críticas**:
 
+> **Nomenclatura (v2.0.0):** estas operações são as **actions** `start` e `stop` da tool `veeam_manage_backup_jobs`. Os nomes `veeam_start_backup_job` / `veeam_stop_backup_job` permanecem reconhecidos como **aliases legacy** pelo Safety Guard.
+
 | Operação | Descrição | Impacto |
 |----------|-----------|---------|
-| **veeam_start_backup_job** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
-| **veeam_stop_backup_job** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
+| **`veeam_manage_backup_jobs` (action=start)** | Iniciar backup job sob demanda (fora do schedule) | ⚠️ Alto - Consome recursos, pode impactar performance |
+| **`veeam_manage_backup_jobs` (action=stop)** | Interromper backup job em execução | ⚠️ Muito Alto - Backup incompleto, snapshots órfãos |
 
 ### Por que essas operações?
 
-**veeam_start_backup_job:**
+**`action=start`:**
 - Consumo inesperado de recursos (CPU, rede, storage)
 - Pode conflitar com janela de backup programada
 - Impacto em VMs de produção (snapshots, I/O)
 
-**veeam_stop_backup_job:**
+**`action=stop`:**
 - Backup incompleto = ponto de restauração inválido
 - Pode deixar snapshots órfãos nas VMs
 - Interrompe cadeia de backups incrementais
@@ -101,7 +103,7 @@ openssl rand -base64 24
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Exemplo de resultado:
-# bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+# SEU_TOKEN_AQUI
 ```
 
 ### Aplicar Configuração
@@ -135,8 +137,9 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
-    "name": "veeam_start_backup_job",
+    "name": "veeam_manage_backup_jobs",
     "arguments": {
+      "action": "start",
       "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
       "fullBackup": false
     }
@@ -155,11 +158,12 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
-    "name": "veeam_start_backup_job",
+    "name": "veeam_manage_backup_jobs",
     "arguments": {
+      "action": "start",
       "jobId": "urn:veeam:Job:00000000-0000-0000-0000-000000000000",
       "fullBackup": false,
-      "confirmationToken": "bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9",
+      "confirmationToken": "SEU_TOKEN_AQUI",
       "reason": "Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware no servidor de produção"
     }
   }'
@@ -177,8 +181,9 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
 ```json
 // Request (Safety Guard OFF)
 {
-  "name": "veeam_start_backup_job",
+  "name": "veeam_manage_backup_jobs",
   "arguments": {
+    "action": "start",
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false
   }
@@ -205,8 +210,9 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
 ```json
 // Request (Safety Guard ON, sem confirmationToken)
 {
-  "name": "veeam_start_backup_job",
+  "name": "veeam_manage_backup_jobs",
   "arguments": {
+    "action": "start",
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false
   }
@@ -241,11 +247,12 @@ Exemplo de uso:\n
 ```json
 // Request (Safety Guard ON, com confirmationToken e reason)
 {
-  "name": "veeam_start_backup_job",
+  "name": "veeam_manage_backup_jobs",
   "arguments": {
+    "action": "start",
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "fullBackup": false,
-    "confirmationToken": "bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9",
+    "confirmationToken": "SEU_TOKEN_AQUI",
     "reason": "Backup emergencial solicitado pelo cliente para recuperação de dados críticos após falha de hardware no servidor de produção"
   }
 }
@@ -274,8 +281,9 @@ Exemplo de uso:\n
 ```json
 // Request (token errado)
 {
-  "name": "veeam_stop_backup_job",
+  "name": "veeam_manage_backup_jobs",
   "arguments": {
+    "action": "stop",
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "confirmationToken": "token-errado-aqui",
     "reason": "Parar job para manutenção emergencial do storage"
@@ -305,10 +313,11 @@ Verifique se está usando o token correto."
 ```json
 // Request (reason com 5 caracteres, mínimo é 10)
 {
-  "name": "veeam_stop_backup_job",
+  "name": "veeam_manage_backup_jobs",
   "arguments": {
+    "action": "stop",
     "jobId": "urn:veeam:Job:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "confirmationToken": "bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9",
+    "confirmationToken": "SEU_TOKEN_AQUI",
     "reason": "teste"
   }
 }
@@ -417,7 +426,7 @@ pm2 logs mcp-veeam --err
     "timestamp": "2025-12-10T14:30:00.000Z"
   },
   "environment": {
-    "veeamHost": "SKPMWVM006.ad.skillsit.com.br",
+    "veeamHost": "veeam-server.domain.com",
     "mcpVersion": "1.0.0"
   }
 }
@@ -453,7 +462,7 @@ grep "safety-guard-authorized" /opt/mcp-servers/veeam-backup/logs/audit.log | jq
 openssl rand -hex 32
 
 # Adicionar ao .env
-echo "MCP_SAFETY_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9" >> .env
+echo "MCP_SAFETY_TOKEN=SEU_TOKEN_AQUI" >> .env
 
 # Reiniciar
 pm2 restart mcp-veeam
@@ -560,8 +569,8 @@ pm2 logs mcp-veeam --lines 20 | grep SafetyGuard
 - **Documentação GLPI:** `/opt/mcp-servers/glpi/README.md#safety-guard`
 - **Implementação Veeam:**
   - `/opt/mcp-servers/veeam-backup/lib/safety-guard.js`
-  - `/opt/mcp-servers/veeam-backup/tools/veeam_start_backup_job-tool.js`
-  - `/opt/mcp-servers/veeam-backup/tools/veeam_stop_backup_job-tool.js`
+  - `/opt/mcp-servers/veeam-backup/tools/manage-backup-jobs.js` (actions start/stop)
+  - `/opt/mcp-servers/veeam-backup/lib/format-helpers.js` (deriveScheduleType, etc.)
 
 ---
 

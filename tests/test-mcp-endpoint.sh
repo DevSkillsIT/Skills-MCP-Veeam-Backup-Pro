@@ -13,7 +13,7 @@ set -e
 HOST="localhost"
 PORT="8825"
 BASE_URL="http://${HOST}:${PORT}"
-AUTH_TOKEN="bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9"
+AUTH_TOKEN="SEU_TOKEN_AQUI"
 
 # Cores para output
 GREEN='\033[0;32m'

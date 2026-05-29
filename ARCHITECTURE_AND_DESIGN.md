@@ -106,15 +106,15 @@ Esta arquitetura garante compatibilidade universal com todos os clientes MCP e A
   "result": {
     "tools": [
       {
-        "name": "veeam_list_backup_jobs",
-        "description": "Lista todos os jobs de backup configurados",
+        "name": "veeam_search_backup_jobs",
+        "description": "Jobs de backup, copia e jobs derivados de sessoes; busca por nome do job ou de VM",
         "inputSchema": {
           "type": "object",
           "properties": {},
           "required": []
         }
       },
-      // ... 14 outras ferramentas
+      // ... 11 outras ferramentas (12 no total)
     ]
   }
 }
@@ -130,7 +130,7 @@ Esta arquitetura garante compatibilidade universal com todos os clientes MCP e A
   "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
-    "name": "veeam_list_backup_jobs",
+    "name": "veeam_search_backup_jobs",
     "arguments": {}
   },
   "id": 3
@@ -280,7 +280,7 @@ const activeSessions = new Map();
   id: "uuid-v4-here",
   createdAt: 1702201845000,
   lastActivity: 1702201900000,
-  clientIp: "192.168.1.100",
+  clientIp: "203.0.113.100",
   userAgent: "Claude Code/1.0"
 }
 ```
@@ -440,10 +440,10 @@ for (const [toolName, toolFunction] of loadedTools) {
 │  │                     Tools Layer                            │  │
 │  │  (tools/*.js)                                             │  │
 │  │                                                            │  │
-│  │  backup-jobs-tool.js          job-details-tool.js        │  │
-│  │  backup-sessions-tool.js      backup-proxies-tool.js     │  │
-│  │  backup-repositories-tool.js  license-tools.js           │  │
-│  │  server-info-tool.js                                      │  │
+│  │  search-backup-jobs.js          manage-backup-jobs.js        │  │
+│  │  search-backup-sessions.js      manage-backup-sessions.js     │  │
+│  │  search-infrastructure.js  get-license.js           │  │
+│  │  get-server-info.js                                      │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -460,7 +460,7 @@ for (const [toolName, toolFunction] of loadedTools) {
 │  │                  Veeam API Client                          │  │
 │  │  • HTTPS requests to Veeam REST API (port 9419)          │  │
 │  │  • Request/response transformation                        │  │
-│  │  • Error handling and retries                             │  │
+│  │  • Error handling, timeout 8s (sem retry, fail-soft)                             │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -476,34 +476,53 @@ for (const [toolName, toolFunction] of loadedTools) {
 ```
 veeam-backup/
 │
-├── vbr-mcp-server.js          # Entrypoint principal (hybrid server)
-├── package.json                # Dependências Node.js
-├── .env                        # Configuração (não versionado)
-├── env.example                 # Template de configuração
+├── vbr-mcp-server.js          # Entrypoint (modos --mcp, --http, hibrido)
+├── package.json               # Dependencias Node.js (v2.0.0)
+├── .env                       # Configuracao (nao versionado)
+├── .env.example               # Template de configuracao
 │
-├── lib/                        # Bibliotecas compartilhadas
-│   ├── auth-middleware.js      # Middleware de autenticação automática
-│   ├── mcp-auth-middleware.js  # Autenticação Bearer Token para MCP
-│   ├── safety-guard.js         # Proteção para operações críticas
-│   └── description-helpers.js  # Busca semântica (searchByName, normalização)
+├── lib/                       # Bibliotecas compartilhadas
+│   ├── auth-middleware.js          # Autenticacao Veeam automatica
+│   ├── mcp-auth-middleware.js      # Autenticacao Bearer Token (MCP)
+│   ├── veeam-fetch.js              # Cliente HTTP (timeout 8s, sem retry, fail-soft)
+│   ├── backup-coverage.js          # VM<->job, span de restore points, resolucao de nome
+│   ├── session-aggregation.js      # groupByJob, derivacao de jobs por sessao
+│   ├── date-helper.js              # Datas flexiveis (ISO/BR/natural/relativo)
+│   ├── description-helpers.js      # Busca semantica por description (MSP)
+│   ├── mcp-tools-dictionary.js     # Fonte unica das 12 descricoes (o que a LLM ve)
+│   ├── prompts.js                  # 15 prompts (7 gestor + 8 tecnico)
+│   ├── resources.js                # 2 resources (server-info, license)
+│   ├── safety-guard.js             # Protecao das operacoes start/stop
+│   ├── format-helpers.js           # Helpers (deriveLogLevel, deriveScheduleType, ...)
+│   ├── veeam-dictionaries.js       # Dicionarios de codigos do VBR
+│   ├── response-enricher.js        # Metadados de performance nas respostas
+│   ├── validation-helpers.js       # Validacao de UUID/entradas
+│   ├── audit-logger.js             # Log de auditoria (start/stop)
+│   └── formatters/                 # Interceptor Markdown
+│       ├── response-formatter.js   # Roteia cada tool -> formatter (JSON -> Markdown)
+│       ├── veeam-formatters.js     # Formatadores por dominio
+│       └── markdown-helpers.js     # Helpers de tabela Markdown
 │
-├── tools/                      # Ferramentas MCP
-│   ├── backup-jobs-tool.js
-│   ├── backup-sessions-tool.js
-│   ├── job-details-tool.js
-│   ├── backup-proxies-tool.js
-│   ├── backup-repositories-tool.js
-│   ├── license-tools.js
-│   └── server-info-tool.js
+├── tools/                     # 8 arquivos -> 12 tools logicas
+│   ├── search-backup-jobs.js       # veeam_search_backup_jobs
+│   ├── search-backup-sessions.js   # veeam_search_backup_sessions
+│   ├── search-restore-points.js    # veeam_search_restore_points
+│   ├── search-infrastructure.js    # veeam_search_infrastructure
+│   ├── manage-backup-jobs.js       # veeam_manage_backup_jobs (get_details/get_schedule/start/stop)
+│   ├── manage-backup-sessions.js   # veeam_manage_backup_sessions (get_log)
+│   ├── get-license.js              # veeam_get_license_compliance
+│   ├── get-server-info.js          # veeam_get_server_info
+│   └── bridge-tools.js             # 4 bridges: list/read resources, list/get prompts
 │
-├── assets/                     # Recursos visuais
+├── tests/                     # node --test (unit/formatters, unit/lib, integration)
+├── scripts/                   # start.sh, start-server.sh, dev/ (diagnostico de API)
 │
-└── docs/                       # Documentação
-    ├── README.md               # Documentação principal
-    ├── ARCHITECTURE_AND_DESIGN.md  # Este arquivo
-    ├── DEPLOYMENT.md           # Guia de deployment
-    ├── SECURITY.md             # Guia de segurança
-    └── CONTRIBUTING.md         # Guia de contribuição
+├── docs/                      # Documentacao tecnica detalhada
+│   ├── SAFETY_GUARD.md
+│   └── DESCRIPTION_FEATURES_OPERATIONS_GUIDE.md
+│
+└── (raiz)  README.md · ARCHITECTURE_AND_DESIGN.md · DEPLOYMENT.md · SECURITY.md
+          CONTRIBUTING.md · TROUBLESHOOTING.md · DOCS_INDEX.md
 ```
 
 ---
@@ -525,7 +544,7 @@ McpServer
       │
       │ (3) Route to tool handler
       ▼
-Tool Handler (e.g., backup-jobs-tool.js)
+Tool Handler (e.g., search-backup-jobs.js)
       │
       │ (4) Auth Middleware → Get cached token
       ▼
@@ -563,7 +582,7 @@ Mock MCP Server Context
       │
       │ (3) Execute tool handler
       ▼
-Tool Handler (e.g., backup-jobs-tool.js)
+Tool Handler (e.g., search-backup-jobs.js)
       │
       │ (4) Auth Middleware → Get cached token
       ▼
@@ -654,7 +673,7 @@ app.post('/mcp', mcpAuthMiddleware, async (req, res) => { /* JSON-RPC */ });
 
 **Configuração (.env):**
 ```bash
-AUTH_TOKEN=bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9
+AUTH_TOKEN=SEU_TOKEN_AQUI
 ```
 
 **Teste de Autenticação:**
@@ -672,7 +691,7 @@ curl -X POST http://localhost:8825/mcp \
 
 # ✅ Token correto - Retorna 200
 curl -X POST http://localhost:8825/mcp \
-  -H 'Authorization: Bearer bf2571ca23445da17a8415e1c8344db6e311adca2bd55d8b544723ad65f604b9' \
+  -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"initialize","id":1}'
 ```
@@ -941,7 +960,7 @@ grant_type=password
 **Firewall (UFW):**
 ```bash
 # Restringir porta HTTP apenas à rede interna
-ufw allow from 192.168.1.0/24 to any port 8825
+ufw allow from 203.0.113.0/24 to any port 8825
 ufw deny 8825  # Bloquear todos os outros
 ```
 
