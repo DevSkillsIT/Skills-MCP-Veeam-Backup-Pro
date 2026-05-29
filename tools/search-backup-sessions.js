@@ -66,15 +66,25 @@ export default function(server) {
           return { content: [{ type: "text", text: win.error }], isError: true };
         }
 
-        // @MX:NOTE: jobIdFilter accepts a job NAME (not just UUID) for ergonomics — the VBR
-        // API only accepts a UUID and returns a raw HTTP 400 otherwise. Resolve name->UUID here.
+        // @MX:NOTE: jobIdFilter accepts a job NAME (not just UUID) for ergonomics.
+        // RC2: in groupByJob mode, a NAME is filtered post-aggregation by substring
+        // (groupSessionsByJob nameNeedle) — so Agent/Copy/remote-site jobs that are NOT in the
+        // /jobs inventory can still be isolated by name (previously this errored with the
+        // contradictory advice "use groupByJob=true" while groupByJob was ALREADY true).
+        // Only the non-grouped path needs a real UUID (VBR /sessions jobIdFilter demands one).
         let resolvedJobId = jobIdFilter;
+        let nameNeedle = null;
         if (jobIdFilter && !isUUID(jobIdFilter)) {
-          const r = await resolveJobIdentifier({ host, port, token, apiVersion, value: jobIdFilter });
-          if (r.error) {
-            return { content: [{ type: "text", text: r.error }], isError: true };
+          if (groupByJob) {
+            nameNeedle = jobIdFilter;   // filter aggregated groups by name; do NOT send to API
+            resolvedJobId = null;
+          } else {
+            const r = await resolveJobIdentifier({ host, port, token, apiVersion, value: jobIdFilter });
+            if (r.error) {
+              return { content: [{ type: "text", text: r.error }], isError: true };
+            }
+            resolvedJobId = r.id;
           }
-          resolvedJobId = r.id;
         }
 
         // @MX:NOTE: groupByJob collapses the per-attempt session rows into one row per job.
@@ -83,7 +93,7 @@ export default function(server) {
         if (groupByJob) {
           return await handleGroupByJob({
             host, port, token, apiVersion, httpsAgent,
-            scope, statusFilter, win, jobIdFilter: resolvedJobId, typeFilter, limit, startTime
+            scope, statusFilter, win, jobIdFilter: resolvedJobId, nameNeedle, typeFilter, limit, startTime
           });
         }
 
@@ -361,7 +371,7 @@ function applyStatusQuery(qp, statusFilter) {
 async function handleGroupByJob(ctx) {
   const {
     host, port, token, apiVersion, httpsAgent,
-    scope, statusFilter, win, jobIdFilter, typeFilter, limit, startTime
+    scope, statusFilter, win, jobIdFilter, nameNeedle, typeFilter, limit, startTime
   } = ctx;
 
   // Window: from/to (win.since/until) wins; else default to last 24h for the health view.
@@ -414,8 +424,9 @@ async function handleGroupByJob(ctx) {
     inWindow = inWindow.filter(s => BACKUP_JOB_SESSION_TYPES.includes(s.sessionType));
   }
 
-  // Group by jobId (fallback name) — shared pure helper.
-  const allGroups = groupSessionsByJob(inWindow);
+  // Group by jobId (fallback name) — shared pure helper. RC2: nameNeedle filters by job name
+  // substring so a non-inventory job (Agent/Copy/remote-site) can be isolated by name here.
+  const allGroups = groupSessionsByJob(inWindow, { nameNeedle });
 
   // Sort: failing first, then running, then most recent run
   const jobs = allGroups.sort((a, b) => {
@@ -435,7 +446,7 @@ async function handleGroupByJob(ctx) {
       truncated
     },
     jobs,
-    filters: { scope, statusFilter, window: windowLabel, jobIdFilter: jobIdFilter || null, typeFilter: typeFilter || null }
+    filters: { scope, statusFilter, window: windowLabel, jobIdFilter: jobIdFilter || null, jobNameFilter: nameNeedle || null, typeFilter: typeFilter || null }
   };
 
   return createMCPResponse(addPerformanceMetrics(responseData, startTime));
