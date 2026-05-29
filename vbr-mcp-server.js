@@ -194,24 +194,28 @@ async function handleMCPInitialize() {
       name: 'veeam-backup',
       version: '2.0.0'
     },
-    instructions: `Veeam Backup & Replication MCP Server - Gerenciamento de backup e restauracao de VMs.
+    instructions: `Veeam Backup & Replication MCP — monitoramento e operacao de backups (VBR 12.3, REST v1.2). Respostas em Markdown (tabelas). Somente leitura, exceto manage_backup_jobs action=start/stop.
 
-=== CATEGORIAS DE TOOLS (12 total) ===
-Busca (search_*): veeam_search_backup_jobs, veeam_search_backup_sessions, veeam_search_restore_points, veeam_search_infrastructure
-Gerenciamento (manage_*): veeam_manage_backup_jobs, veeam_manage_backup_sessions
-Consulta (get_*): veeam_get_license_compliance, veeam_get_server_info
-Bridge MCP: veeam_list_mcp_resources, veeam_read_mcp_resource, veeam_list_mcp_prompts, veeam_get_mcp_prompt
+=== TOOLS (12) ===
+Busca: veeam_search_backup_jobs, veeam_search_backup_sessions, veeam_search_restore_points, veeam_search_infrastructure
+Gerenciar: veeam_manage_backup_jobs (get_details/get_schedule/start/stop), veeam_manage_backup_sessions (get_log)
+Consulta: veeam_get_license_compliance, veeam_get_server_info
+Bridge: veeam_list_mcp_resources, veeam_read_mcp_resource, veeam_list_mcp_prompts, veeam_get_mcp_prompt
 
-=== FORMATO DE PARAMETROS ===
-- Tools search_*: use limit (padrao 25, max 50) e skip para paginacao.
-- Tools manage_*: use action + jobId ou sessionId (formato UUID).
-- Tools get_*: sem parametros obrigatorios.
+=== COMO ACHAR UM JOB (cobertura em 4 fontes) ===
+veeam_search_backup_jobs(nameFilter="termo") procura nesta ordem: (1) inventario /jobs (jobs de VM), (2) nome de VM dentro do job, (3) historico de sessoes 7d (site remoto/replica), (4) BACKUPS ARMAZENADOS (Veeam Agent de servidor FISICO e Backup Copy/offsite — que NAO existem no inventario /jobs nem nas sessoes por nome). Aceita nome de JOB, de VM ou de CLIENTE (parcial).
+- "O cliente X tem backup/job?" -> veeam_search_backup_jobs(nameFilter="X"). Resultado via "BACKUPS ARMAZENADOS" = job de Agent (servidor fisico) ou Backup Copy (offsite). Se vazio nas 4 fontes, confira veeam_search_infrastructure(type=repositories): pode haver repositorio provisionado SEM job (storage orfao).
+- NUNCA conclua "nao tem job" so porque /jobs ou as sessoes vieram vazios — jobs de Agent/Copy so aparecem via search_backup_jobs (fonte /backups).
+
+=== LIMITES (distinga "nao encontrado" de "nao exposto pela API") ===
+- Jobs de Agent (servidor fisico): aparecem em search_backup_jobs, mas SEM detalhe/schedule (manage_backup_jobs) e SEM sessoes/restore points por nome (limite do VBR REST). Status de execucao do Agent: console do VBR.
+- manage_backup_jobs (detalhe/operacao) e get_log atuam so em jobs de VM do inventario.
 
 === DICAS ===
-- Todas as respostas sao Markdown (tabelas).
-- Use resources veeam:// para info estatica (servidor, licenca).
-- Prefira filtros (typeFilter, stateFilter, statusFilter, hours) para reduzir resultados.
-- Para troubleshooting: veeam_search_backup_sessions com statusFilter=Failed e hours=24.`
+- limit padrao 35 (max 50). Filtros: typeFilter, statusFilter, stateFilter, hours, nameFilter, from/to (ISO, BR DD/MM/AAAA ou natural "ontem","7 dias").
+- Saude geral / "quais jobs falharam?": veeam_search_backup_sessions(groupByJob=true) — 1 linha por job, falhas no topo, sem ruido de retentativa. Isolar 1 job remoto: groupByJob=true + jobIdFilter="nome".
+- Diagnostico de falha: search_backup_sessions(statusFilter=Failed) -> UUID -> manage_backup_sessions(action=get_log) (causa por VM).
+- Espaco/repositorios: search_infrastructure(type=repositories) (status OFFLINE/ATENCAO). Info estatica: resources veeam://.`
   };
 }
 
