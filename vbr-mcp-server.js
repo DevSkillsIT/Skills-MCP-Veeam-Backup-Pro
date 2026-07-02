@@ -605,7 +605,25 @@ function createHttpServer() {
           result = {};
           break;
 
+        // @MX:NOTE: standard MCP capability-probe methods. Returning an ERROR here (old default)
+        // can make strict Streamable-HTTP clients abort the handshake right after initialize
+        // (they never reach tools/list -> "ferramenta indisponivel"). Reply with valid empties.
+        case 'resources/templates/list':
+          result = { resourceTemplates: [] };
+          break;
+
+        case 'ping':
+          result = {};
+          break;
+
         default:
+          // JSON-RPC "Method not found" — but do NOT throw for unknown notifications
+          // (notifications have no id and need no response/error).
+          if (id === undefined || id === null) {
+            console.log(`[MCP] Notification ignorada: ${method}`);
+            result = {};
+            break;
+          }
           throw new Error(`Método não suportado: ${method}`);
       }
 
