@@ -35,8 +35,8 @@ export default function(server) {
       scope: z.enum(["all", "backup_only"]).default("all").describe("'all' includes system tasks (MalwareDetection, SureBackup, ConfigBackup, ...); 'backup_only' excludes them. Use 'backup_only' for customer-facing reports, 'all' for internal audit."),
       statusFilter: z.enum(["All", "Running", "Failed", "Success", "Warning"]).default("All").describe("Filter by result. 'Running' shows in-progress only (good for 'what's happening now'). 'Failed' or 'Warning' for triage. 'Success' for SLA proof. 'All' when the user needs the raw picture."),
       hours: z.number().min(1).max(168).optional().describe("Time window in hours (max 168 = 7 days). Always set this unless you genuinely need ancient history — without it, the tool scans ALL sessions. Typical values: hours=24 (daily check), hours=168 (weekly report), hours=4 (recent failures)."),
-      from: z.string().optional().describe("Inicio da janela — aceita QUALQUER formato: ISO (2026-05-28 ou 2026-05-28T05:30), BR (28/05/2026 05:30), ou natural ('ontem', 'hoje', 'ultimas 6 horas', '7 dias'). Use no lugar de hours quando quiser um intervalo especifico. Se informado, tem prioridade sobre hours."),
-      to: z.string().optional().describe("Fim da janela (mesmos formatos de from). Opcional — padrao: agora. So tem efeito junto com from."),
+      from: z.string().optional().describe("Inicio da janela. Formatos aceitos (nao invente outros): ISO ('2026-05-28' ou '2026-05-28T05:30'), BR ('28/05/2026' ou '28/05/2026 05:30'), palavra 'ontem'/'hoje'/'anteontem' com hora opcional (ex 'ontem 23:59'), ou relativo ('ultimas 6 horas', '7 dias'). Dia inteiro de ontem: from='ontem'. Se informado, tem prioridade sobre hours."),
+      to: z.string().optional().describe("Fim da janela (mesmos formatos de from). Opcional — padrao: agora. So tem efeito junto com from. Sem hora, 'to' ja inclui ate 23:59:59 do dia — dia inteiro de ontem: from='ontem', to='ontem'."),
       jobIdFilter: z.string().optional().describe("UUID of a specific backup job to filter by. Get it from search_backup_jobs first. Combine with limit=10 to see just the recent runs of one job — most efficient query shape."),
       typeFilter: z.string().optional().describe("Session type (case-sensitive): 'BackupJob' (standard backups), 'ReplicaJob' (replicas), 'BackupCopyJob' (3-2-1 copy), 'ConfigurationBackup', 'MalwareDetection', 'SureBackup'. Leave empty to include all types."),
       groupByJob: z.boolean().default(false).describe("When true, collapse the many session rows into ONE row per job — last result, last run, and attempt/failure counts in the window. USE THIS for 'how are my backups doing?' / 'which jobs failed today?'. It removes retry-storm noise (one failing job can generate dozens of identical session rows). Pairs with hours (default 24 in this mode). Jobs with failures are listed first.")
@@ -59,8 +59,9 @@ export default function(server) {
           groupByJob = false
         } = params;
 
-        // @MX:NOTE: Flexible time window — accept from/to in ANY format (ISO, BR, natural,
-        // relative) so a weak LLM doesn't have to compute `hours`. from/to win over hours.
+        // @MX:NOTE: Flexible time window — from/to accept a CLOSED set of formats (ISO, BR,
+        // keyword+optional-time, relative) parsed by normalizeDateTime, so a weak LLM doesn't
+        // have to compute `hours`. from/to win over hours. Keep descriptions in sync with the parser.
         const win = resolveTimeWindow({ from, to, hours });
         if (win.error) {
           return { content: [{ type: "text", text: win.error }], isError: true };

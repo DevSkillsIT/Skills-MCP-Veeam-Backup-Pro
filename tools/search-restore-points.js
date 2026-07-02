@@ -25,7 +25,7 @@ export default function(server) {
       vmName: z.string().optional().describe("VM name with semantic search (partial, accent-insensitive). Use vmName OR vmId"),
       vmId: z.string().optional().describe("VM UUID. Use vmName OR vmId"),
       limit: z.number().min(1).max(50).default(35).describe("Max restore points LISTED (default 35, hard max 50) — enforced. Points are newest-first. The retention span (first/last) is always computed over ALL points regardless of this limit. Use from/to to scope by date."),
-      from: z.string().optional().describe("Filtra pontos a partir desta data/hora. Aceita QUALQUER formato: ISO (2026-05-20), BR (20/05/2026 05:00), ou natural ('ontem', 'ultimas 48 horas', '7 dias'). Opcional — sem from/to retorna os mais recentes ate o limite."),
+      from: z.string().optional().describe("Filtra pontos a partir desta data/hora. Formatos aceitos (nao invente outros): ISO ('2026-05-20'), BR ('20/05/2026 05:00'), palavra 'ontem'/'hoje' (hora opcional) ou relativo ('ultimas 48 horas', '7 dias'). Opcional — sem from/to retorna os mais recentes ate o limite."),
       to: z.string().optional().describe("Filtra pontos ate esta data/hora (mesmos formatos de from). Opcional — padrao: agora.")
     },
     async (params) => {
@@ -132,7 +132,7 @@ export default function(server) {
 
         enrichedPoints.sort((a, b) => new Date(b.creationTime) - new Date(a.creationTime));
 
-        // @MX:NOTE: optional date window (from/to, any format). When given, scope the points to
+        // @MX:NOTE: optional date window (from/to, closed format set — see normalizeDateTime). When given, scope the points to
         // it; otherwise use all. The span/analysis below reflect the scoped set.
         const scoped = win.since
           ? enrichedPoints.filter(p => { const t = new Date(p.creationTime); return t >= win.since && (!win.until || t <= win.until); })

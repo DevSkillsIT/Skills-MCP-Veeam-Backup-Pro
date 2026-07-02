@@ -212,7 +212,7 @@ veeam_search_backup_jobs(nameFilter="termo") procura nesta ordem: (1) inventario
 - manage_backup_jobs (detalhe/operacao) e get_log atuam so em jobs de VM do inventario.
 
 === DICAS ===
-- limit padrao 35 (max 50). Filtros: typeFilter, statusFilter, stateFilter, hours, nameFilter, from/to (ISO, BR DD/MM/AAAA ou natural "ontem","7 dias").
+- limit padrao 35 (max 50). Filtros: typeFilter, statusFilter, stateFilter, hours, nameFilter, from/to. Datas from/to: ISO, BR DD/MM/AAAA, palavra "ontem"/"hoje" (hora opcional, ex "ontem 23:59") ou "7 dias". Dia inteiro de ontem: from="ontem", to="ontem".
 - Saude geral / "quais jobs falharam?": veeam_search_backup_sessions(groupByJob=true) — 1 linha por job, falhas no topo, sem ruido de retentativa. Isolar 1 job remoto: groupByJob=true + jobIdFilter="nome".
 - Diagnostico de falha: search_backup_sessions(statusFilter=Failed) -> UUID -> manage_backup_sessions(action=get_log) (causa por VM).
 - Espaco/repositorios: search_infrastructure(type=repositories) (status OFFLINE/ATENCAO). Info estatica: resources veeam://.`

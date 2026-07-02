@@ -62,6 +62,61 @@ describe('normalizeDateTime() — naturais (keywords)', () => {
   });
 });
 
+describe('normalizeDateTime() — keyword + hora (regressao "ontem 00:00")', () => {
+  // Normaliza ao inicio do dia antes de comparar, senao a fracao da hora distorce o Math.round.
+  const dayOf = (d) => { const a = new Date(d); a.setHours(0, 0, 0, 0); const x = new Date(); x.setHours(0, 0, 0, 0); return Math.round((a.getTime() - x.getTime()) / 86400000); };
+  it('ontem 00:00 -> ontem 00:00 (antes retornava null)', () => {
+    const d = normalizeDateTime('ontem 00:00');
+    assert.ok(d instanceof Date && !isNaN(d.getTime()), 'nao deve ser null');
+    assert.equal(dayOf(d), -1);
+    assert.equal(d.getHours(), 0); assert.equal(d.getMinutes(), 0);
+  });
+  it('ontem 23:59 -> ontem 23:59:00', () => {
+    const d = normalizeDateTime('ontem 23:59');
+    assert.equal(dayOf(d), -1);
+    assert.equal(d.getHours(), 23); assert.equal(d.getMinutes(), 59); assert.equal(d.getSeconds(), 0);
+  });
+  it('hoje 14:30 -> hoje 14:30', () => {
+    const d = normalizeDateTime('hoje 14:30');
+    assert.equal(dayOf(d), 0);
+    assert.equal(d.getHours(), 14); assert.equal(d.getMinutes(), 30);
+  });
+  it('anteontem 08:00:00 -> -2 dias com segundos', () => {
+    const d = normalizeDateTime('anteontem 08:00:00');
+    assert.equal(dayOf(d), -2);
+    assert.equal(d.getHours(), 8); assert.equal(d.getMinutes(), 0); assert.equal(d.getSeconds(), 0);
+  });
+  it('hora explicita sobrepoe endOfDay', () => {
+    const d = normalizeDateTime('ontem 10:00', { endOfDay: true });
+    assert.equal(d.getHours(), 10); assert.equal(d.getMinutes(), 0);
+  });
+  it('keyword uppercase + hora', () => {
+    const d = normalizeDateTime('ONTEM 06:15');
+    assert.equal(dayOf(d), -1); assert.equal(d.getHours(), 6); assert.equal(d.getMinutes(), 15);
+  });
+  it('keyword + lixo (nao casa parcial) -> null', () => {
+    assert.equal(normalizeDateTime('ontem xyz'), null);
+  });
+});
+
+describe('resolveTimeWindow() — receita "dia inteiro de ontem"', () => {
+  it("from='ontem' + to='ontem' -> 00:00:00 ate 23:59:59 do mesmo dia", () => {
+    const w = resolveTimeWindow({ from: 'ontem', to: 'ontem' });
+    assert.equal(w.error, null);
+    assert.equal(w.since.getHours(), 0); assert.equal(w.since.getMinutes(), 0); assert.equal(w.since.getSeconds(), 0);
+    assert.equal(w.until.getHours(), 23); assert.equal(w.until.getMinutes(), 59); assert.equal(w.until.getSeconds(), 59);
+    assert.equal(w.since.getDate(), w.until.getDate());
+    const spanH = (w.until - w.since) / 3600000;
+    assert.ok(spanH > 23.9 && spanH < 24.1, `span inesperado: ${spanH}h`);
+  });
+  it("janela intradia from='ontem 08:00' to='ontem 18:00'", () => {
+    const w = resolveTimeWindow({ from: 'ontem 08:00', to: 'ontem 18:00' });
+    assert.equal(w.error, null);
+    assert.equal(w.since.getHours(), 8);
+    assert.equal(w.until.getHours(), 18);
+  });
+});
+
 describe('normalizeDateTime() — formato BR', () => {
   it('DD/MM/YYYY (dayfirst)', () => {
     const d = normalizeDateTime('28/05/2026');
