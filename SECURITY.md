@@ -225,7 +225,7 @@ pm2 restart mcp-veeam
   "mcpServers": {
     "veeam-backup": {
       "type": "streamable-http",
-      "url": "http://mcp.servidor.one:8825/mcp",
+      "url": "http://your-server:8825/mcp",
       "headers": {
         "Authorization": "Bearer SEU_TOKEN_AQUI"
       }
@@ -240,7 +240,7 @@ pm2 restart mcp-veeam
 {
   "mcpServers": {
     "veeam-backup": {
-      "httpUrl": "http://mcp.servidor.one:8825/mcp",
+      "httpUrl": "http://your-server:8825/mcp",
       "headers": {
         "Authorization": "Bearer SEU_TOKEN_AQUI"
       },
@@ -254,7 +254,7 @@ pm2 restart mcp-veeam
 
 ```bash
 # Listar ferramentas disponíveis
-curl -X POST http://mcp.servidor.one:8825/mcp \
+curl -X POST http://your-server:8825/mcp \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_TOKEN_AQUI' \
   -d '{
@@ -487,7 +487,7 @@ pm2 logs mcp-veeam --lines 20
 # MCP_SAFETY_GUARD=false (ou não configurado)
 # Tools funcionam normalmente SEM exigir confirmação
 
-curl -X POST http://mcp.servidor.one:8825/mcp \
+curl -X POST http://your-server:8825/mcp \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
@@ -513,7 +513,7 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
 # MCP_SAFETY_GUARD=true
 # Tools EXIGEM confirmationToken + reason
 
-curl -X POST http://mcp.servidor.one:8825/mcp \
+curl -X POST http://your-server:8825/mcp \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
@@ -771,7 +771,7 @@ const activeSessions = new Map();
 **Criar/Usar Sessão (Automático):**
 
 ```bash
-curl -X POST http://mcp.servidor.one:8825/mcp \
+curl -X POST http://your-server:8825/mcp \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_TOKEN' \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
@@ -783,7 +783,7 @@ curl -X POST http://mcp.servidor.one:8825/mcp \
 **Listar Sessões Ativas (Debug):**
 
 ```bash
-curl http://mcp.servidor.one:8825/mcp-sessions
+curl http://your-server:8825/mcp-sessions
 
 # Response:
 {
@@ -802,7 +802,7 @@ curl http://mcp.servidor.one:8825/mcp-sessions
 **Terminar Sessão:**
 
 ```bash
-curl -X DELETE http://mcp.servidor.one:8825/mcp \
+curl -X DELETE http://your-server:8825/mcp \
   -H 'Authorization: Bearer SEU_TOKEN' \
   -H 'Mcp-Session-Id: 550e8400-e29b-41d4-a716-446655440000'
 

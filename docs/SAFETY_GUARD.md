@@ -133,7 +133,7 @@ pm2 logs mcp-veeam --lines 20
 # MCP_SAFETY_GUARD=false (ou não configurado)
 # Tools funcionam normalmente SEM exigir confirmação
 
-curl -X POST http://mcp.servidor.one:8825/tools/call \
+curl -X POST http://your-server:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{
@@ -154,7 +154,7 @@ curl -X POST http://mcp.servidor.one:8825/tools/call \
 # MCP_SAFETY_GUARD=true
 # Tools EXIGEM confirmationToken + reason
 
-curl -X POST http://mcp.servidor.one:8825/tools/call \
+curl -X POST http://your-server:8825/tools/call \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer SEU_AUTH_TOKEN' \
   -d '{

@@ -62,7 +62,7 @@ Ao criar novo job de backup:
 
 ### 2. Via API VBR
 ```bash
-curl -X POST https://vbr.servidor.one:9419/api/v1/jobs \
+curl -X POST https://your-vbr-server:9419/api/v1/jobs \
   -H "Authorization: Bearer TOKEN" \
   -d '{
     "name": "BKP-JOB-LOCAL-ACME-001",
