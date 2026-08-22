@@ -36,7 +36,7 @@ Cliente: {NOME_DA_EMPRESA} | ID: {ID_CLIENTE} | Local: {LOCALIZAÇÃO} | Contrat
 ### Exemplos Reais
 ```
 Cliente: ACME Corporation | ID: CLI-001 | Local: Curitiba | Contrato: Premium
-Cliente: Ramada Hotéis | ID: CLI-002 | Local: São Paulo | Contrato: Enterprise
+Cliente: Aurora Hotéis | ID: CLI-002 | Local: São Paulo | Contrato: Enterprise
 Cliente: TechCo Solutions | ID: CLI-015 | Local: Brasília | Contrato: Standard
 Cliente: Skills IT | ID: CLI-INTERNO | Local: Curitiba | Contrato: Interno
 ```

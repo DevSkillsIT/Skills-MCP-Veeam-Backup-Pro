@@ -339,11 +339,11 @@ test_get_backup_copy_jobs_baseline() {
 # TEST 6: get-backup-copy-jobs COM descriptionFilter
 # ════════════════════════════════════════════════════════════════════════════
 test_get_backup_copy_jobs_with_filter() {
-  log "Fetching backup copy jobs with descriptionFilter='Ramada'..."
+  log "Fetching backup copy jobs with descriptionFilter='Aurora'..."
 
   local response=$(call_mcp_tool "get-backup-copy-jobs" '{
     "limit": 100,
-    "descriptionFilter": "Ramada"
+    "descriptionFilter": "Aurora"
   }')
 
   if is_json_rpc_error "$response"; then

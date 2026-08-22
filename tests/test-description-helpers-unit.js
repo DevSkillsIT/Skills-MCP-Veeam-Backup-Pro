@@ -75,7 +75,7 @@ function test(name, fn) {
 const descriptionValid = 'Cliente: ACME Corp | ID: CLI-001 | Local: Curitiba | Contrato: Premium';
 
 // Description com espaços extras
-const descriptionValidWithSpaces = 'Cliente:  Ramada Hotéis  | ID:  CLI-002  | Local:  São Paulo  | Contrato:  Enterprise';
+const descriptionValidWithSpaces = 'Cliente:  Aurora Hotéis  | ID:  CLI-002  | Local:  São Paulo  | Contrato:  Enterprise';
 
 // Description não estruturado (genérico)
 const descriptionGeneric = 'Backup job for VMware infrastructure';
@@ -98,8 +98,8 @@ const jobsSample = [
   },
   {
     id: '2',
-    name: 'BKP-RAMADA-001',
-    description: 'Cliente: Ramada Hotéis | ID: CLI-002 | Local: São Paulo | Contrato: Enterprise'
+    name: 'BKP-AURORA-001',
+    description: 'Cliente: Aurora Hotéis | ID: CLI-002 | Local: São Paulo | Contrato: Enterprise'
   },
   {
     id: '3',
@@ -142,7 +142,7 @@ test('Parse description with extra spaces', () => {
 
   assert(result.isValid, 'Should be valid');
   assert(result.isParsed, 'Should be parsed');
-  assertEqual(result.clientName, 'Ramada Hotéis', 'Client name with spaces trimmed');
+  assertEqual(result.clientName, 'Aurora Hotéis', 'Client name with spaces trimmed');
   assertEqual(result.clientId, 'CLI-002', 'Client ID with spaces trimmed');
   assertEqual(result.location, 'São Paulo', 'Location with spaces trimmed');
   assertEqual(result.contractType, 'Enterprise', 'Contract type with spaces trimmed');
@@ -296,7 +296,7 @@ test('Search by client ID', () => {
   const results = searchByDescription(jobsSample, 'CLI-002');
 
   assertEqual(results.length, 1, 'Should find 1 result');
-  assertEqual(results[0].id, '2', 'Should find Ramada job');
+  assertEqual(results[0].id, '2', 'Should find Aurora job');
 });
 
 test('Search by location', () => {
@@ -311,7 +311,7 @@ test('Search by contract type', () => {
   const results = searchByDescription(jobsSample, 'Enterprise');
 
   assertEqual(results.length, 1, 'Should find 1 result');
-  assertEqual(results[0].id, '2', 'Should find Ramada job');
+  assertEqual(results[0].id, '2', 'Should find Aurora job');
 });
 
 test('Case-insensitive search', () => {
