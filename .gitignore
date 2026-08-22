@@ -45,3 +45,6 @@ coverage/
 # Build
 dist/
 build/
+
+# MoAI local session state (nunca versionar)
+.moai/state/
