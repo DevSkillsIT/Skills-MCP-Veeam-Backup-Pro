@@ -4,7 +4,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
-import swaggerJsdoc from "swagger-jsdoc";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

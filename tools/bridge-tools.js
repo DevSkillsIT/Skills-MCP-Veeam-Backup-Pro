@@ -6,6 +6,7 @@
 // mas NEM SEMPRE faz bridge de resources e prompts.
 // Estas tools espelham os primitivos nativos como tools acessiveis.
 
+import { z } from 'zod';
 import { VEEAM_RESOURCES, readResource } from '../lib/resources.js';
 import { VEEAM_PROMPTS, handleGetPrompt } from '../lib/prompts.js';
 import { authManager } from '../lib/auth-middleware.js';
@@ -55,11 +56,9 @@ export default function(server) {
   server.tool(
     "veeam_read_mcp_resource",
     {
-      uri: {
-        type: "string",
-        description: "URI do resource a ler",
-        enum: VEEAM_RESOURCES.map(r => r.uri)
-      }
+      // Zod raw shape: SDK >= 1.32 refuses a plain JSON-schema object here (it used to be
+      // read as annotations, leaving the stdio tool with no input schema at all).
+      uri: z.enum(VEEAM_RESOURCES.map(r => r.uri)).describe("URI do resource a ler")
     },
     async ({ uri }) => {
       try {
@@ -125,15 +124,9 @@ export default function(server) {
   server.tool(
     "veeam_get_mcp_prompt",
     {
-      name: {
-        type: "string",
-        description: "Nome do prompt a executar",
-        enum: VEEAM_PROMPTS.map(p => p.name)
-      },
-      arguments: {
-        type: "object",
-        description: "Argumentos do prompt (use veeam_list_prompts para ver detalhes)"
-      }
+      name: z.enum(VEEAM_PROMPTS.map(p => p.name)).describe("Nome do prompt a executar"),
+      arguments: z.record(z.string(), z.unknown()).optional()
+        .describe("Argumentos do prompt (use veeam_list_prompts para ver detalhes)")
     },
     async ({ name, arguments: promptArgs }) => {
       try {
