@@ -348,7 +348,7 @@ Copie `env.example` para `.env` e configure:
 
 ```bash
 # Veeam Server Configuration
-VEEAM_HOST=veeam-prod.skillsit.local
+VEEAM_HOST=your-vbr-server
 VEEAM_PORT=9419
 VEEAM_API_VERSION=1.2-rev0
 

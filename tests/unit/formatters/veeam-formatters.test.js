@@ -145,7 +145,7 @@ describe('formatRestorePointsList()', () => {
   });
 
   it('REPRO V6: sem args.limit usa pagination.limit (35), nao o antigo default 25', () => {
-    const points = Array.from({ length: 35 }, (_, i) => ({ id: `rp-${i}`, vmName: 'ACPMWVM010', creationTime: '2026-05-29', type: 'Increment' }));
+    const points = Array.from({ length: 35 }, (_, i) => ({ id: `rp-${i}`, vmName: 'AULABVM010', creationTime: '2026-05-29', type: 'Increment' }));
     const data = { restorePoints: points, pagination: { total: 153, limit: 35, skip: 0 } };
     const result = formatRestorePointsList(data, {}); // args sem limit
     assert.ok(result.includes('limit: 35'), result.split('\n')[0]);
@@ -334,28 +334,28 @@ describe('formatBackupJobsList() — VM match e derivacao', () => {
   });
 
   it('REPRO RC4: matchedFromBackups renderiza Agent/Copy via /backups', () => {
-    const data = { matchedFromBackups: true, searchTerm: 'CDL', jobs: [
-      { name: 'BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO - 203.0.113.237', kind: 'Agent (servidor fisico)', repositoryName: 'CDL-CLI_RepoLocal-CDL-BKP-HDExterno', creationTime: '2026-03-30T19:25:50Z' },
-      { name: 'BKP-COPY-DTC-CD-PMW-CDL-SR001-FISICO', kind: 'Backup Copy (offsite/cloud)', repositoryName: null, repositoryId: '3429c8d0', creationTime: '2026-03-30T21:04:58Z' }
+    const data = { matchedFromBackups: true, searchTerm: 'ZNV', jobs: [
+      { name: 'BKP-JOB-LOCAL-ZN-LAB-ZNV-SR001-FISICO - 203.0.113.237', kind: 'Agent (servidor fisico)', repositoryName: 'ZNV-CLI_RepoLocal-ZNV-BKP-HDExterno', creationTime: '2026-03-30T19:25:50Z' },
+      { name: 'BKP-COPY-DTC-ZN-LAB-ZNV-SR001-FISICO', kind: 'Backup Copy (offsite/cloud)', repositoryName: null, repositoryId: '3429c8d0', creationTime: '2026-03-30T21:04:58Z' }
     ] };
     const result = formatBackupJobsList(data, {});
     assert.ok(result.includes('BACKUPS ARMAZENADOS'), result);
     assert.ok(result.includes('Agent (servidor fisico)'));
     assert.ok(result.includes('Backup Copy (offsite/cloud)'));
-    assert.ok(result.includes('CDL-CLI_RepoLocal-CDL-BKP-HDExterno'));
+    assert.ok(result.includes('ZNV-CLI_RepoLocal-ZNV-BKP-HDExterno'));
   });
 
   it('REPRO RC4b: listagem geral exibe secao de jobs Agent/Copy (externalJobs)', () => {
     const data = {
       data: [{ id: 'j1', name: 'BKP-JOB-LOCAL-SK-PMW-VCENTER-X', type: 'Backup', state: 0, result: { result: 1 }, objectsCount: 1, lastRun: '2026-05-29T05:00:00Z' }],
       externalJobs: [
-        { name: 'BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO - 203.0.113.237', kind: 'Agent (servidor fisico)', creationTime: '2026-03-30T19:25:50Z' },
-        { name: 'BKP-COPY-DTC-CD-PMW-CDL-SR001-FISICO', kind: 'Backup Copy (offsite/cloud)', creationTime: '2026-03-30T21:04:58Z' }
+        { name: 'BKP-JOB-LOCAL-ZN-LAB-ZNV-SR001-FISICO - 203.0.113.237', kind: 'Agent (servidor fisico)', creationTime: '2026-03-30T19:25:50Z' },
+        { name: 'BKP-COPY-DTC-ZN-LAB-ZNV-SR001-FISICO', kind: 'Backup Copy (offsite/cloud)', creationTime: '2026-03-30T21:04:58Z' }
       ]
     };
     const result = formatBackupJobsList(data, {});
     assert.ok(result.includes('Jobs de Agent/Copy/offsite'), result);
-    assert.ok(result.includes('BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO'), 'CDL agent job deve aparecer na listagem geral');
+    assert.ok(result.includes('BKP-JOB-LOCAL-ZN-LAB-ZNV-SR001-FISICO'), 'ZNV agent job deve aparecer na listagem geral');
     assert.ok(result.includes('Agent (servidor fisico)'));
   });
 

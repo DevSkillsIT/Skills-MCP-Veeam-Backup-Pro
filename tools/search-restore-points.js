@@ -41,7 +41,7 @@ export default function(server) {
         if (!vmName && !vmId) {
           throw new Error(
             "Voce deve informar vmName OU vmId.\n" +
-            'Exemplos: vmName: "GEPMWVM010" ou vmId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"'
+            'Exemplos: vmName: "GBLABVM010" ou vmId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"'
           );
         }
 
@@ -231,7 +231,7 @@ async function findVmIdByName(vmName, host, port, token, apiVersion) {
 
   // ── Primary path: /api/v1/backupObjects (VBR REST API v1.2-rev0) ──────────
   // @MX:NOTE: nameFilter needs explicit wildcards for partial/substring matches, otherwise
-  // "GWPMWVM010" won't match the object "GWPMWVM010-AD". Wrap with * (user wants partial search).
+  // "WXLABVM010" won't match the object "WXLABVM010-AD". Wrap with * (user wants partial search).
   const wildName = vmName.includes('*') ? vmName : `*${vmName}*`;
   const backupObjectsUrl = `https://${host}:${port}/api/v1/backupObjects?nameFilter=${encodeURIComponent(wildName)}&limit=50&skip=0`;
   console.log(`[findVmIdByName] Trying primary path: ${backupObjectsUrl}`);

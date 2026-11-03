@@ -12,7 +12,7 @@ Este documento explica como usar as novas features de descrição para gerenciar
 ```
 "Buscar jobs do cliente ACME"
 → Precisa saber o nome técnico do job
-→ Exemplo: BKP-JOB-LOCAL-OK-PMW-VCENTER-OKDTCVM001-APP
+→ Exemplo: BKP-JOB-LOCAL-AU-LAB-VCENTER-AUAPPVM001-APP
 → Difícil de lembrar
 ```
 
@@ -188,7 +188,7 @@ Backup copy jobs foram **consolidados** em `veeam_search_backup_jobs` (não há 
   "jobs": [
     {
       "id": "8f07369e-ed2e-44d7-9bca-92159a74a11a",
-      "name": "BKP-JOB-LOCAL-OK-PMW-VCENTER-OKDTCVM001-APP",
+      "name": "BKP-JOB-LOCAL-AU-LAB-VCENTER-AUAPPVM001-APP",
       "type": "Backup",
       "state": "Stopped",
       "platformName": "VMware",
@@ -384,7 +384,7 @@ curl -X POST http://localhost:8825/mcp \
 ## Suporte & Escalação
 
 ### Questões Técnicas
-- 📧 Email: adriano@skillsit.com.br
+- 📧 Email: contato@skillsit.com.br
 - 📞 Slack: #infrastructure
 
 ### Reportar Bugs

@@ -55,42 +55,42 @@ describe('selectVmMatch() — V1 multi-VM disambiguation', () => {
 
   it('mesma VM em varios backups (nome unico) → resolve sem ambiguidade', () => {
     const r = selectVmMatch([
-      { name: 'GSPMWVM010-AD', id: 'uuid-1' },
-      { name: 'GSPMWVM010-AD', id: 'uuid-1' }
+      { name: 'ZTLABVM010-AD', id: 'uuid-1' },
+      { name: 'ZTLABVM010-AD', id: 'uuid-1' }
     ]);
     assert.equal(r.ambiguous, false);
     assert.equal(r.id, 'uuid-1');
-    assert.equal(r.name, 'GSPMWVM010-AD');
+    assert.equal(r.name, 'ZTLABVM010-AD');
   });
 
   it('REPRO V1: parcial casando VARIAS VMs distintas → ambiguo com candidatos (antes pegava matched[0])', () => {
     const r = selectVmMatch([
-      { name: 'ACPMWVM004', id: 'u4' },
-      { name: 'ACPMWVM007', id: 'u7' },
-      { name: 'ACPMWVM010', id: 'u10' },
-      { name: 'ACPMWVM011', id: 'u11' }
+      { name: 'AULABVM004', id: 'u4' },
+      { name: 'AULABVM007', id: 'u7' },
+      { name: 'AULABVM010', id: 'u10' },
+      { name: 'AULABVM011', id: 'u11' }
     ]);
     assert.equal(r.ambiguous, true);
     assert.equal(r.id, null);
-    assert.deepEqual([...r.candidates].sort(), ['ACPMWVM004', 'ACPMWVM007', 'ACPMWVM010', 'ACPMWVM011']);
+    assert.deepEqual([...r.candidates].sort(), ['AULABVM004', 'AULABVM007', 'AULABVM010', 'AULABVM011']);
   });
 
   it('prefere id > objectId; fallback usa vmName/vmId', () => {
     assert.equal(selectVmMatch([{ name: 'X', id: 'real', objectId: 'vm-1' }]).id, 'real');
     assert.equal(selectVmMatch([{ name: 'X', objectId: 'vm-1' }]).id, 'vm-1');
-    const fb = selectVmMatch([{ vmName: 'GEPMWVM010', vmId: 'g10' }]);
+    const fb = selectVmMatch([{ vmName: 'GBLABVM010', vmId: 'g10' }]);
     assert.equal(fb.id, 'g10');
-    assert.equal(fb.name, 'GEPMWVM010');
+    assert.equal(fb.name, 'GBLABVM010');
   });
 });
 
 describe('classifyBackupKind() — RC4 Agent/Copy detection', () => {
   it('REPRO RC4: Agent de servidor fisico (WindowsPhysical)', () => {
-    assert.equal(classifyBackupKind('BKP-JOB-LOCAL-CD-PMW-CDL-SR001-FISICO - 203.0.113.237', 'WindowsPhysical'), 'Agent (servidor fisico)');
+    assert.equal(classifyBackupKind('BKP-JOB-LOCAL-ZN-LAB-ZNV-SR001-FISICO - 203.0.113.237', 'WindowsPhysical'), 'Agent (servidor fisico)');
     assert.equal(classifyBackupKind('algum-job', 'LinuxPhysical'), 'Agent (servidor fisico)');
   });
   it('Backup Copy detectado pelo nome (offsite)', () => {
-    assert.equal(classifyBackupKind('BKP-COPY-DTC-CD-PMW-CDL-SR001-FISICO', 'CustomPlatform'), 'Backup Copy (offsite/cloud)');
+    assert.equal(classifyBackupKind('BKP-COPY-DTC-ZN-LAB-ZNV-SR001-FISICO', 'CustomPlatform'), 'Backup Copy (offsite/cloud)');
   });
   it('VM e fallback', () => {
     assert.equal(classifyBackupKind('JOB-VM', 'VmwareVm'), 'VM');

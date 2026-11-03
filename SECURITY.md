@@ -861,14 +861,14 @@ upstream veeam_mcp {
 # HTTP → HTTPS redirect
 server {
     listen 80;
-    server_name veeam-mcp.skillsit.local;
+    server_name your-mcp-server;
     return 301 https://$server_name$request_uri;
 }
 
 # HTTPS server
 server {
     listen 443 ssl http2;
-    server_name veeam-mcp.skillsit.local;
+    server_name your-mcp-server;
 
     # SSL/TLS Configuration
     ssl_certificate /etc/ssl/certs/veeam-mcp.crt;
@@ -995,7 +995,7 @@ VEEAM_IGNORE_SSL=false
 
 **Verificar certificado Veeam:**
 ```bash
-openssl s_client -connect veeam-prod.skillsit.local:9419 -showcerts
+openssl s_client -connect your-vbr-server:9419 -showcerts
 ```
 
 **Saída esperada:**
@@ -1005,7 +1005,7 @@ depth=2 C = US, O = "Lets Encrypt", CN = ISRG Root X1
 verify return:1
 depth=1 C = US, O = "Lets Encrypt", CN = R3
 verify return:1
-depth=0 CN = veeam-prod.skillsit.local
+depth=0 CN = your-vbr-server
 verify return:1
 ```
 
@@ -1057,7 +1057,7 @@ ls -la /opt/mcp-servers/veeam-backup/.env
 # ============================================================================
 # VEEAM SERVER - Configuração de conexão
 # ============================================================================
-VEEAM_HOST=veeam-prod.skillsit.local
+VEEAM_HOST=your-vbr-server
 VEEAM_PORT=9419
 VEEAM_API_VERSION=1.2-rev0
 
@@ -1144,7 +1144,7 @@ sed -i "s/VEEAM_PASSWORD=.*/VEEAM_PASSWORD=$NEW_PASSWORD/" /opt/mcp-servers/veea
 pm2 restart mcp-veeam
 
 # 4. Notificar equipe
-echo "Senha rotacionada em $(date)" | mail -s "Veeam MCP Password Rotation" admin@skillsit.com.br
+echo "Senha rotacionada em $(date)" | mail -s "Veeam MCP Password Rotation" admin@example.com
 ```
 
 ### Secrets Management (Avançado)

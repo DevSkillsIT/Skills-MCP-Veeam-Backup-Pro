@@ -10,9 +10,9 @@ const h = authHeaders(ctx.token, ctx.apiVersion);
 const base = `https://${ctx.host}:${ctx.port}/api/v1`;
 const keys = (o) => (o && typeof o === "object" ? Object.keys(o) : []);
 
-// 1. Find a recent FAILED session for ACPSOVM010 (or any AC failure)
+// 1. Find a recent FAILED session for AUBKPVM010 (or any AU failure)
 const recent = (await vbrTryGet(`${base}/sessions?limit=200`, { headers: h })).data?.data || [];
-const fail = recent.find(s => /ACPSOVM010/i.test(s.name || "") && /failed/i.test(typeof s.result === "object" ? s.result?.result : s.result))
+const fail = recent.find(s => /AUBKPVM010/i.test(s.name || "") && /failed/i.test(typeof s.result === "object" ? s.result?.result : s.result))
   || recent.find(s => /failed/i.test(typeof s.result === "object" ? s.result?.result : s.result));
 if (!fail) { console.log("no failed session found in recent 200"); process.exit(0); }
 

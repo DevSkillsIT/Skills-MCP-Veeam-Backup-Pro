@@ -127,7 +127,7 @@ export default function(server) {
 
         // No results in the /jobs inventory. Hybrid coverage: a job may exist as an
         // Agent/Replica/Copy/remote-site job that this endpoint does not return. Derive it
-        // from the session history so it is no longer invisible (resolves the CDL / AC-* gap).
+        // from the session history so it is no longer invisible (resolves the ZNV / AU-* gap).
         // @MX:NOTE: derivation matches by session NAME, so only run it for nameFilter — a
         // description-only search would otherwise match names misleadingly.
         if ((!filteredJobs || filteredJobs.length === 0) && nameFilter) {
@@ -146,7 +146,7 @@ export default function(server) {
         // @MX:NOTE: RC4 — 4th and LAST coverage source: stored backups (/api/v1/backups).
         // Veeam Agent (physical server) and Backup Copy jobs are absent from /jobs AND their
         // sessions are not name-matchable in /sessions, so the 3 sources above all miss them.
-        // /backups is the only place they surface (resolved the invisible CDL agent job).
+        // /backups is the only place they surface (resolved the invisible ZNV agent job).
         if ((!filteredJobs || filteredJobs.length === 0) && nameFilter) {
           const term = nameFilter.replace(/\*/g, '');
           const fromBackups = await findJobsFromBackups({ host, port, token, apiVersion }, term);
@@ -196,7 +196,7 @@ export default function(server) {
         // @MX:NOTE: RC4b — overview listing (no name/desc/state filter, first page) ALSO surfaces
         // Agent (physical) and Backup Copy jobs from /backups, which are NOT in /jobs inventory.
         // Without this, "liste os jobs" returns only the 21 VM jobs and an LLM concludes a client
-        // (e.g. CDL) has no job. Best-effort: never blocks the main listing.
+        // (e.g. ZNV) has no job. Best-effort: never blocks the main listing.
         let externalJobs = [];
         if (!nameFilter && !descriptionFilter && !stateFilter && (skip === 0)) {
           try {

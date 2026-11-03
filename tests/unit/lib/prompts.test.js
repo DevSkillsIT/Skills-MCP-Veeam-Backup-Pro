@@ -20,9 +20,9 @@ describe('handleGetPrompt() — V4 required-arg validation', () => {
   });
 
   it('com o arg obrigatorio presente, renderiza e interpola o valor', async () => {
-    const res = await handleGetPrompt('veeam_restore_point_lookup', { vm_name: 'GSPMWVM010' }, null);
+    const res = await handleGetPrompt('veeam_restore_point_lookup', { vm_name: 'ZTLABVM010' }, null);
     const text = res.messages.map(m => m.content?.text ?? '').join('\n');
-    assert.ok(text.includes('GSPMWVM010'), 'deve conter a VM informada');
+    assert.ok(text.includes('ZTLABVM010'), 'deve conter a VM informada');
     assert.ok(!text.includes('undefined'), 'nao deve conter "undefined"');
   });
 
